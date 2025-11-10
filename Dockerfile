@@ -38,17 +38,6 @@ COPY enviarwpp.py .
 COPY templates/ ./templates/
 COPY .env .
 
-# Copia e configura o script de entrada
-COPY docker-entrypoint.sh .
-RUN chmod +x docker-entrypoint.sh
-
-# Cria usuário não-root para segurança
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
-
-# Expõe a porta 5000 (porta padrão da aplicação Flask)
-EXPOSE 5000
-
-# Comando para iniciar a aplicação usando o script de entrada
-ENTRYPOINT ["./docker-entrypoint.sh"]
+# Comando para iniciar a aplicação usando Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "app:app"]
 

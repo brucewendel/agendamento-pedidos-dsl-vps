@@ -14,7 +14,7 @@ DB_DSN = os.getenv("DB_DSN")
 FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 FLASK_HOST = '0.0.0.0'
 FLASK_PORT = 5000
-FLASK_DEBUG = True
+FLASK_DEBUG = False
 
 # --- Configurações de WhatsApp ---
 API_URL = os.getenv("API_URL")
