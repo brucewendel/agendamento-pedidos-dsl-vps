@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Agendamentos</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root {
+            --bg-light: #f4f7fc; --card-bg-light: #ffffff; --text-light: #343a40;
+            --border-light: #e9ecef; --shadow-light: rgba(40, 50, 70, 0.05);
+            --bg-dark: #121828; --card-bg-dark: #1e293b; --text-dark: #e2e8f0;
+            --border-dark: #334155; --shadow-dark: rgba(0, 0, 0, 0.2);
+            --primary: #4f46e5; --primary-hover: #4338ca; --success: #22c55e;
+            --warning: #f59e0b; --danger: #ef4444; --info: #3b82f6;
+            --dark-gray: #64748b;
+        }
+        *, *:before, *:after { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 10px; background-color: var(--bg-light); color: var(--text-light); transition: background-color 0.3s, color 0.3s; }
+        body.dark-mode { --bg-light: var(--bg-dark); --card-bg-light: var(--card-bg-dark); --text-light: var(--text-dark); --border-light: var(--border-dark); --shadow-light: var(--shadow-dark); }
+        .container { max-width: 1400px; margin: auto; }
+        .card { background: var(--card-bg-light); border-radius: 16px; box-shadow: 0 6px 24px var(--shadow-light); padding: 25px; margin-bottom: 25px; border: 1px solid var(--border-light); transition: all 0.3s; animation: fadeIn 0.5s ease-out; }
+        h1 { display: flex; align-items: center; gap: 15px; font-size: 1.8em; margin: 0; }
+        h2 { margin-top: 0; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-light); padding-bottom: 15px; margin-bottom: 20px;}
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 10px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .stat-card { padding: 20px; text-align: center; }
+        .stat-card .icon { font-size: 2.5em; margin-bottom: 10px; }
+        .stat-card h3 { margin: 0; font-size: 2em; }
+        .stat-card p { margin: 0; color: #888; text-transform: uppercase; font-size: 0.8em; font-weight: 600; }
+        .tab-nav { display: flex; border-bottom: 2px solid var(--border-light); }
+        .tab-button { background: none; border: none; padding: 15px 25px; cursor: pointer; font-size: 1.1em; font-weight: 600; color: #888; border-bottom: 3px solid transparent; transition: all 0.2s; }
+        .tab-button.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab-content { display: none; animation: fadeIn 0.4s; }
+        .tab-content.active { display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 16px; border-bottom: 1px solid var(--border-light); text-align: left; vertical-align: middle;}
+        th { font-weight: 600; color: #888; text-transform: uppercase; font-size: 0.8em; }
+        tbody tr:hover { background-color: rgba(79, 70, 229, 0.05); }
+        body.dark-mode tbody tr:hover { background-color: rgba(255, 255, 255, 0.05); }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.2); backdrop-filter: blur(8px); }
+        .modal-content { background: var(--card-bg-light); border: 1px solid var(--border-light); margin: 10% auto; padding: 25px; width: 90%; max-width: 500px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+        .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 0.9em; transition: all 0.2s; text-decoration: none; color: white; }
+        input { width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: 1px solid var(--border-light); box-sizing: border-box; background-color: var(--bg-light); color: var(--text-light); }
+        .filter-controls { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 15px; padding-bottom: 20px; margin-top: 25px; }
+        .message { padding: 15px; margin-bottom: 20px; border-radius: 8px; text-align: center; font-weight: 500; }
+        .status { padding: 6px 12px; border-radius: 20px; font-weight: 700; text-align: center; font-size: 0.8em; display: inline-flex; align-items: center; gap: 6px; }
+        .status-agendado { background-color: #d1fae5; color: #065f46; }
+        .status-pendente { background-color: #fef3c7; color: #92400e; }
+        .status-entregue { background-color: #d1fae5; color: #065f46; }
+        .status-em-transito { background-color: #cffafe; color: #0891b2; }
+        .status-aguardando { background-color: #e5e7eb; color: #4b5563; }
+        .close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .theme-switcher { display: flex; align-items: center; gap: 8px; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 26px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(24px); }
+        #selectAllCheckbox, .pedido-checkbox { width: 18px; height: 18px; cursor: pointer; vertical-align: middle; }
+        @media print { .no-print { display: none !important; } }
+        @media (max-width: 768px) {
+            body { padding: 5px; } h1 { font-size: 1.5em; } .card { padding: 15px; }
+            .filter-controls, .filter-controls form { flex-direction: column; align-items: stretch; width: 100%; }
+            .button { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="container">
+        <header class="no-print">
+            <h1><i class="bi bi-calendar-week" style="color: var(--primary);"></i> Dashboard</h1>
+            <div class="theme-switcher">
+                <i class="bi bi-moon-stars-fill"></i>
+                <label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider round"></span></label>
+                <i class="bi bi-sun-fill"></i>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="card stat-card"><div class="icon" style="color: var(--warning);"><i class="bi bi-clock-history"></i></div><h3>{{ stats.pendentes }}</h3><p>Pendentes</p></div>
+            <div class="card stat-card"><div class="icon" style="color: var(--success);"><i class="bi bi-calendar-check"></i></div><h3>{{ stats.agendados_hoje }}</h3><p>Agendados p/ Hoje</p></div>
+            <div class="card stat-card"><div class="icon" style="color: var(--info);"><i class="bi bi-calendar-event"></i></div><h3>{{ stats.agendados_7_dias }}</h3><p>Agendados (7d)</p></div>
+        </div>
+
+        <div class="card">
+            <div class="tab-nav no-print">
+                <button class="tab-button" onclick="openTab(event, 'pendentes')"><i class="bi bi-list-task"></i> Painel de Ações</button>
+                <button class="tab-button" onclick="openTab(event, 'confirmados')"><i class="bi bi-search"></i> Relatório</button>
+            </div>
+            
+            <div id="pendentes" class="tab-content">
+                <div class="filter-controls no-print">
+                    <form action="/painel" method="GET" style="display: flex; gap: 15px; align-items: flex-end; flex: 3;">
+                        <input type="hidden" name="active_tab" value="pendentes">
+                        <div><label for="numped_pendentes">Nº Pedido</label><input type="text" id="numped_pendentes" name="numped" value="{{ request.args.get('numped', '') }}"></div>
+                        <div><label for="data_pedido">Data do Pedido</label><input type="date" id="data_pedido" name="data_pedido" value="{{ request.args.get('data_pedido', '') }}"></div>
+                        <div style="display: flex; gap: 10px;"><button type="submit" class="button" style="background-color: var(--success);">Buscar</button><a href="/painel?active_tab=pendentes" class="button" style="background-color: var(--dark-gray);">Limpar</a></div>
+                    </form>
+                    <div style="flex: 1; min-width: 200px;"><button id="bulkScheduleBtn" class="button" style="background-color: var(--primary);" disabled><i class="bi bi-calendar-plus"></i> Agendar Selecionados</button></div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selectAllCheckbox"></th>
+                                <th>Nº Pedido</th><th>Cliente</th><th>Nota Fiscal</th><th>Carregamento</th><th>Data Pedido</th><th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pedido in pedidos_pendentes %}
+                            <tr>
+                                <td><input type="checkbox" class="pedido-checkbox" value="{{ pedido.NUMPED }}"></td>
+                                <td><strong>{{ pedido.NUMPED }}</strong></td>
+                                <td>{{ pedido.CLIENTE | default('...') }}</td>
+                                <td>{{ pedido.NUMNOTA | default('...') }}</td>
+                                <td>{{ pedido.NUMCAR | default('...') }}</td>
+                                <td>{{ pedido.DATA.strftime('%d/%m/%Y') if pedido.DATA else '---' }}</td>
+                                <td><button class="button open-modal-btn" data-numped="{{ pedido.NUMPED }}" data-datapedido="{{ pedido.DATA.strftime('%Y-%m-%d') if pedido.DATA else '' }}" style="background-color: var(--primary);"><i class="bi bi-pencil-square"></i> Agendar</button></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="7" style="text-align: center; padding: 20px;">Nenhum pedido pendente encontrado.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="confirmados" class="tab-content">
+                 <div class="filter-controls no-print">
+                    <form action="/painel" method="GET" style="display: flex; gap: 15px; align-items: flex-end; flex: 3;">
+                        <input type="hidden" name="active_tab" value="confirmados">
+                        <div><label>Nº Pedido</label><input type="text" name="numped" value="{{ request.args.get('numped', '') }}"></div>
+                        <div><label>Entrega (De)</label><input type="date" name="data_de" value="{{ request.args.get('data_de', '') }}"></div>
+                        <div><label>Entrega (Até)</label><input type="date" name="data_ate" value="{{ request.args.get('data_ate', '') }}"></div>
+                        <div style="display: flex; gap: 10px;"><button type="submit" class="button" style="background-color: var(--success);">Buscar</button><a href="/painel?active_tab=confirmados" class="button" style="background-color: var(--dark-gray);">Limpar</a></div>
+                    </form>
+                    <div style="flex: 1; min-width: 200px;"><button class="button" style="background-color: var(--info);" onclick="window.print();"><i class="bi bi-printer"></i> Imprimir / PDF</button></div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nº Pedido</th><th>Cliente</th><th>Nota Fiscal</th><th>Carregamento</th><th>Previsão Entrega</th><th>Início</th><th>Fim</th><th>Status da Entrega</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agendamento in agendamentos_confirmados %}
+                            <tr>
+                                <td><strong>{{ agendamento.NUMPED }}</strong></td>
+                                <td>{{ agendamento.CLIENTE | default('...') }}</td>
+                                <td>{{ agendamento.NUMNOTA | default('...') }}</td>
+                                <td>{{ agendamento.NUMCAR | default('...') }}</td>
+                                <td><strong>{{ agendamento.PREVENTREGA.strftime('%d/%m/%Y') if agendamento.PREVENTREGA else '---' }}</strong></td>
+                                <td>{{ agendamento.HORAINI | default('---') }}</td>
+                                <td>{{ agendamento.HORAFIM | default('---') }}</td>
+                                <td>
+                                    {% if agendamento.STATUS_ENTREGA %}
+                                        {% if 'ENTREGUE' in agendamento.STATUS_ENTREGA|upper %}
+                                            <span class="status status-entregue"><i class="bi bi-check-circle-fill"></i> {{ agendamento.STATUS_ENTREGA }}</span>
+                                        {% else %}
+                                            <span class="status status-em-transito"><i class="bi bi-truck"></i> {{ agendamento.STATUS_ENTREGA }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="status status-aguardando"><i class="bi bi-box-seign"></i> Aguardando</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="8" style="text-align: center; padding: 20px;">Nenhum agendamento encontrado.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="agendamentoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Agendar Pedido</h2>
+            <form method="POST">
+                <label>Número do Pedido</label>
+                <input type="number" id="numped_modal" name="numped" readonly style="background-color: #eee; color: #888;">
+                <label style="margin-top: 15px;">Previsão de Entrega</label>
+                <input type="date" name="preventrega" required>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top:15px;">
+                    <div><label>Horário Inicial</label><input type="time" name="horaini" required></div>
+                    <div><label>Horário Final</label><input type="time" name="horafim" required></div>
+                </div>
+                <br><br>
+                <button type="submit" class="button" style="background-color: var(--primary); width:100%;"><i class="bi bi-save"></i> Salvar Agendamento</button>
+            </form>
+        </div>
+    </div>
+    <div id="bulkAgendamentoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Agendar Múltiplos Pedidos</h2>
+            <p>A data e hora abaixo serão aplicadas a <strong id="selectedCount">0</strong> pedido(s).</p>
+            <form method="POST">
+                <input type="hidden" id="numpeds_selecionados" name="numpeds_selecionados">
+                <label>Previsão de Entrega</label>
+                <input type="date" name="preventrega" required>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top:15px;">
+                    <div><label>Horário Inicial</label><input type="time" name="horaini" required></div>
+                    <div><label>Horário Final</label><input type="time" name="horafim" required></div>
+                </div>
+                <br><br>
+                <button type="submit" class="button" style="background-color: var(--primary); width:100%;">Salvar Agendamentos</button>
+            </form>
+        </div>
+    </div>
+
+<script>
+    function openTab(evt, tabName) {
+        let i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) tabcontent[i].style.display = "none";
+        tablinks = document.getElementsByClassName("tab-button");
+        for (i = 0; i < tablinks.length; i++) tablinks[i].className = tablinks[i].className.replace(" active", "");
+        document.getElementById(tabName).style.display = "block";
+        if(evt) evt.currentTarget.className += " active";
+    }
+
+    function showToast(message, type = 'success') {
+        Toastify({
+            text: message, duration: 4000, close: true, gravity: "top", position: "right", stopOnFocus: true,
+            style: { background: type === 'success' ? "linear-gradient(to right, #00b09b, #96c93d)" : "linear-gradient(to right, #ff5f6d, #ffc371)" }
+        }).showToast();
+    }
+
+    function submitFormAjax(formElement, url) {
+        const formData = new FormData(formElement);
+        const submitButton = formElement.querySelector('button[type="submit"]');
+        const originalButtonHtml = submitButton.innerHTML;
+        submitButton.innerHTML = 'Salvando...';
+        submitButton.disabled = true;
+
+        fetch(url, { method: 'POST', body: formData })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.message, data.status);
+                if (data.status === 'success') {
+                    setTimeout(() => window.location.reload(), 1500);
+                }
+            })
+            .catch(error => { showToast('Ocorreu um erro de comunicação.', 'error'); })
+            .finally(() => {
+                submitButton.innerHTML = originalButtonHtml;
+                submitButton.disabled = false;
+            });
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const params = new URLSearchParams(window.location.search);
+        const activeTab = params.get('active_tab') || 'pendentes';
+        const tabButtonToClick = document.querySelector(`.tab-button[onclick*="'${activeTab}'"]`);
+        if (tabButtonToClick) {
+            openTab({currentTarget: tabButtonToClick}, activeTab);
+        }
+
+        const singleModal = document.getElementById('agendamentoModal');
+        const singleForm = singleModal.querySelector('form');
+        document.querySelectorAll('.open-modal-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                singleModal.querySelector('#numped_modal').value = button.dataset.numped;
+                singleForm.dataset.dataPedido = button.dataset.datapedido;
+                singleModal.style.display = 'block';
+            });
+        });
+        
+        singleForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const dataPedidoStr = singleForm.dataset.dataPedido;
+            const preventregaStr = singleForm.querySelector('input[name="preventrega"]').value;
+            if (!dataPedidoStr || !preventregaStr) { showToast('Datas inválidas para validação.', 'error'); return; }
+            const dataPedido = new Date(dataPedidoStr + 'T00:00:00');
+            const preventrega = new Date(preventregaStr + 'T00:00:00');
+            const minDate = new Date(dataPedido); minDate.setDate(minDate.getDate() + 1);
+            const maxDate = new Date(dataPedido); maxDate.setDate(maxDate.getDate() + 6);
+            if (preventrega < minDate) { Swal.fire({ icon: 'error', title: 'Data Inválida', text: `A entrega não pode ser anterior a ${minDate.toLocaleDateString('pt-BR')}. (mínimo 24h)`}); return; }
+            if (preventrega > maxDate) { Swal.fire({ icon: 'error', title: 'Data Inválida', text: `A entrega não pode ser posterior a ${maxDate.toLocaleDateString('pt-BR')}. (máximo 6 dias)`}); return; }
+            submitFormAjax(singleForm, '/atualizar');
+        });
+
+        const bulkModal = document.getElementById('bulkAgendamentoModal');
+        const bulkForm = bulkModal.querySelector('form');
+        const bulkScheduleBtn = document.getElementById('bulkScheduleBtn');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const pedidoCheckboxes = document.querySelectorAll('.pedido-checkbox');
+        const updateBulkButtonState = () => {
+            const checkedCount = document.querySelectorAll('.pedido-checkbox:checked').length;
+            if (bulkScheduleBtn) bulkScheduleBtn.disabled = checkedCount === 0;
+        };
+        if(selectAllCheckbox) selectAllCheckbox.addEventListener('change', () => { pedidoCheckboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked); updateBulkButtonState(); });
+        pedidoCheckboxes.forEach(checkbox => { checkbox.addEventListener('change', () => { if (!checkbox.checked && selectAllCheckbox) selectAllCheckbox.checked = false; updateBulkButtonState(); }); });
+        if(bulkScheduleBtn) bulkScheduleBtn.addEventListener('click', () => {
+            const checkedBoxes = document.querySelectorAll('.pedido-checkbox:checked');
+            const numpeds = Array.from(checkedBoxes).map(cb => cb.value);
+            if (numpeds.length > 0) {
+                bulkModal.querySelector('#numpeds_selecionados').value = numpeds.join(',');
+                bulkModal.querySelector('#selectedCount').textContent = numpeds.length;
+                bulkModal.style.display = 'block';
+            }
+        });
+        bulkForm.addEventListener('submit', function(event) { event.preventDefault(); submitFormAjax(bulkForm, '/atualizar-massa'); });
+        updateBulkButtonState();
+
+        document.querySelectorAll('.close-button').forEach(btn => btn.addEventListener('click', (e) => e.target.closest('.modal').style.display = 'none'));
+        window.addEventListener('click', (event) => {
+            if (event.target.classList.contains('modal')) event.target.style.display = 'none';
+        });
+
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('change', () => { document.body.classList.toggle('dark-mode'); localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light'); });
+            if (localStorage.getItem('theme') === 'dark') { themeToggle.checked = true; document.body.classList.add('dark-mode'); }
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  agendamento-app:
+    build: .
+    container_name: agendamento-sistema
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=False
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - ./backups:/app/backups
+    networks:
+      - agendamento-network
+
+networks:
+  agendamento-network:
+    driver: bridge
