@@ -168,7 +168,8 @@ def validate_whatsapp_token(codusur, token):
         del TOKENS_WHATSAPP[codusur]
         return False, None
     
-    if stored_data['token'] == token:
+    # Comparar tokens removendo espaços em branco e convertendo para string
+    if str(stored_data['token']).strip() == str(token).strip():
         nome = stored_data['nome']
         telefone = stored_data['telefone']
         del TOKENS_WHATSAPP[codusur]  # Remove o token após uso

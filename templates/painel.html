@@ -2348,13 +2348,39 @@
             });
         }
 
-        // Função para abrir tabs
+        // Função para abrir tabs (otimizada - sem reload da página)
         function openTab(evt, tabName) {
-            // Redirecionar para a rota correta com o parâmetro active_tab
-            if (tabName === 'dashboard') {
-                window.location.href = '/painel?active_tab=dashboard';
-            } else {
-                window.location.href = '/listar_painel?active_tab=' + tabName;
+            // Ocultar todas as abas
+            const tabContents = document.getElementsByClassName('tab-content');
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove('active');
+            }
+            
+            // Remover classe active de todos os botões
+            const tabButtons = document.getElementsByClassName('tab-button-header');
+            for (let i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove('active');
+            }
+            
+            // Mostrar a aba selecionada
+            document.getElementById(tabName).classList.add('active');
+            
+            // Adicionar classe active ao botão clicado
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('active');
+            }
+            
+            // Atualizar URL sem recarregar a página
+            const newUrl = tabName === 'dashboard' 
+                ? '/painel?active_tab=dashboard'
+                : '/listar_painel?active_tab=' + tabName;
+            window.history.pushState({tab: tabName}, '', newUrl);
+            
+            // Se for a aba dashboard, garantir que os dados estejam carregados
+            if (tabName === 'dashboard' && !window.dashboardLoaded) {
+                carregarKPIs();
+                carregarGraficos();
+                window.dashboardLoaded = true;
             }
         }
 

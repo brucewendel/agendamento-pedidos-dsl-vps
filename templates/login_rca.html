@@ -311,7 +311,22 @@
                     </div>
                 </div>
 
-                <!-- Mensagens Flash -->
+                <!-- Mensagens de Erro e Sucesso -->
+                {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {{ error }}
+                    </div>
+                {% endif %}
+                
+                {% if success %}
+                    <div class="alert alert-success" role="alert">
+                        <i class="fas fa-check-circle"></i>
+                        {{ success }}
+                    </div>
+                {% endif %}
+                
+                <!-- Mensagens Flash (fallback) -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
