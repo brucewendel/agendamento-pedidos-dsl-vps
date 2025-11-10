@@ -17,6 +17,15 @@ services:
     networks:
       - agendamento-network
 
+  redis:
+    image: redis:latest
+    container_name: agendamento-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - agendamento-network
+    restart: unless-stopped
+
 networks:
   agendamento-network:
     driver: bridge

@@ -21,6 +21,12 @@ API_URL = os.getenv("API_URL")
 API_TOKEN = os.getenv("API_TOKEN")
 NUMERO_ADMIN = os.getenv("NUMERO_ADMIN")
 
+# --- Configurações do Redis para Cache ---
+REDIS_HOST = os.getenv("REDIS_HOST", "redis") # 'redis' é o nome do serviço no docker-compose
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_DB = int(os.getenv("REDIS_DB", 0))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD") # Se o Redis tiver senha
+
 # --- Armazenamento Temporário ---
 # Em produção, usar Redis ou banco de dados
 TOKENS_WHATSAPP = {}  # {codusur: {'token': 'XXXX', 'timestamp': timestamp, 'telefone': 'XXXXXXXXX', 'nome': 'Nome do RCA'}}

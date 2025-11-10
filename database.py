@@ -1,9 +1,59 @@
 import oracledb
-from datetime import datetime
-from config import DB_USER, DB_PASSWORD, DB_DSN
+from datetime import datetime, date
+import json
+import redis
+from config import DB_USER, DB_PASSWORD, DB_DSN, REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
 
 # Inicializa o modo "Thick" do Oracle
 oracledb.init_oracle_client()
+
+# Inicializa o cliente Redis
+try:
+    redis_client = redis.StrictRedis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        db=REDIS_DB,
+        password=REDIS_PASSWORD,
+        decode_responses=True
+    )
+    redis_client.ping()
+    print("✅ Conectado ao Redis com sucesso!")
+except redis.exceptions.ConnectionError as e:
+    print(f"❌ Erro ao conectar ao Redis: {e}")
+    redis_client = None
+
+class CustomJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return json.JSONEncoder.default(self, obj)
+
+def cache_data(key_prefix, ex=300): # ex é o tempo de expiração em segundos (5 minutos)
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if redis_client:
+                # Gera uma chave de cache baseada no nome da função e seus argumentos
+                # Converte args e kwargs para uma string JSON para garantir uma chave única
+                cache_key_parts = [key_prefix, func.__name__]
+                cache_key_parts.extend(map(str, args))
+                for k, v in sorted(kwargs.items()):
+                    cache_key_parts.append(f"{k}={v}")
+                cache_key = ":".join(cache_key_parts)
+
+                cached_result = redis_client.get(cache_key)
+                if cached_result:
+                    print(f"Cache HIT para {cache_key}")
+                    return json.loads(cached_result)
+                
+                result = func(*args, **kwargs)
+                redis_client.setex(cache_key, ex, json.dumps(result, cls=CustomJsonEncoder))
+                print(f"Cache MISS para {cache_key}, resultado armazenado.")
+                return result
+            else:
+                print("Redis não conectado, executando função sem cache.")
+                return func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 def get_connection():
     """Obtém uma conexão com o banco de dados Oracle"""
@@ -440,6 +490,7 @@ def atualizar_telefone_usuario(codusur, telefone):
     # Mesmo que rowcount seja 0 (valor igual ao anterior), a operação foi bem-sucedida
     return result is not None
 
+@cache_data("kpis_data", ex=300)
 def get_kpis_data(codigo_rca=None):
     """Obtém dados para KPIs do dashboard usando YAN_PEDAGEND e tabelas reais"""
     # Filtro por RCA se fornecido
