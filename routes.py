@@ -330,10 +330,6 @@ def painel():
         user_id = session.get('username')
     
     try:
-        # Processar filtros da requisição
-        numped_filtro = request.args.get('numped_pendentes')
-        data_filtro = request.args.get('data_pedido_pendentes')
-        
         # Parâmetros de paginação
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 25))
@@ -349,50 +345,68 @@ def painel():
         if 'rca_codusur' in session:
             codigo_rca = session.get('rca_codusur')
         
-        pedidos_result = get_pedidos_pendentes(
-            codigo_rca=codigo_rca,
-            numped_filtro=numped_filtro,
-            data_filtro=data_filtro,
-            offset=offset,
-            per_page=per_page
-        )
+        # Inicializar variáveis
+        pedidos = []
+        total_pedidos = 0
+        agendamentos = []
+        total_agendamentos = 0
+        usuarios = []
+        stats = {'agendados_hoje': 0, 'agendados_7_dias': 0}
         
-        # Desempacotar resultado
-        if isinstance(pedidos_result, tuple):
-            pedidos, total_pedidos = pedidos_result
-        else:
-            pedidos = pedidos_result
-            total_pedidos = len(pedidos) if pedidos else 0
+        # OTIMIZAÇÃO: Carregar apenas dados da aba ativa
+        if active_tab == 'dashboard':
+            # Dashboard só precisa de stats (consulta leve)
+            stats = get_stats_data(codigo_rca=codigo_rca)
         
-        # Processar filtros da aba confirmados
-        numped_confirmados = request.args.get('numped_confirmados')
-        data_de_confirmados = request.args.get('data_de_confirmados')
-        data_ate_confirmados = request.args.get('data_ate_confirmados')
+        elif active_tab == 'pendentes':
+            # Carregar apenas pedidos pendentes
+            numped_filtro = request.args.get('numped_pendentes')
+            data_filtro = request.args.get('data_pedido_pendentes')
+            
+            pedidos_result = get_pedidos_pendentes(
+                codigo_rca=codigo_rca,
+                numped_filtro=numped_filtro,
+                data_filtro=data_filtro,
+                offset=offset,
+                per_page=per_page
+            )
+            
+            if isinstance(pedidos_result, tuple):
+                pedidos, total_pedidos = pedidos_result
+            else:
+                pedidos = pedidos_result
+                total_pedidos = len(pedidos) if pedidos else 0
         
-        agendamentos_result = get_agendamentos_confirmados(
-            codigo_rca=codigo_rca,
-            numped_filtro=numped_confirmados,
-            data_de=data_de_confirmados,
-            data_ate=data_ate_confirmados,
-            offset=offset,
-            per_page=per_page
-        )
+        elif active_tab == 'confirmados':
+            # Carregar apenas agendamentos confirmados
+            numped_confirmados = request.args.get('numped_confirmados')
+            data_de_confirmados = request.args.get('data_de_confirmados')
+            data_ate_confirmados = request.args.get('data_ate_confirmados')
+            
+            agendamentos_result = get_agendamentos_confirmados(
+                codigo_rca=codigo_rca,
+                numped_filtro=numped_confirmados,
+                data_de=data_de_confirmados,
+                data_ate=data_ate_confirmados,
+                offset=offset,
+                per_page=per_page
+            )
+            
+            if isinstance(agendamentos_result, tuple):
+                agendamentos, total_agendamentos = agendamentos_result
+            else:
+                agendamentos = agendamentos_result
+                total_agendamentos = len(agendamentos) if agendamentos else 0
         
-        # Desempacotar resultado
-        if isinstance(agendamentos_result, tuple):
-            agendamentos, total_agendamentos = agendamentos_result
-        else:
-            agendamentos = agendamentos_result
-            total_agendamentos = len(agendamentos) if agendamentos else 0
+        elif active_tab == 'usuarios':
+            # Carregar apenas usuários
+            filtro_rca = request.args.get('rca')
+            filtro_supervisor = request.args.get('supervisor')
+            usuarios = get_usuarios(filtro_rca=filtro_rca, filtro_supervisor=filtro_supervisor)
         
-        # Processar filtros da aba usuários
-        filtro_rca = request.args.get('rca')
-        filtro_supervisor = request.args.get('supervisor')
-        
-        # Buscar usuários com filtros aplicados
-        usuarios = get_usuarios(filtro_rca=filtro_rca, filtro_supervisor=filtro_supervisor)
-        
-        stats = get_stats_data(codigo_rca=codigo_rca)
+        # Definir filtros para o template (mesmo que vazios)
+        filtro_rca = request.args.get('rca', '')
+        filtro_supervisor = request.args.get('supervisor', '')
         
         # Calcular informações de paginação
         total_items = total_pedidos if active_tab == 'pendentes' else total_agendamentos
@@ -440,177 +454,92 @@ def painel():
 
 @main_routes.route('/listar_painel')
 def listar_painel():
-    """Rota para listagem do painel com filtros e paginação"""
+    """Rota para listagem do painel com filtros e paginação - OTIMIZADA"""
     # Verifica se é RCA logado ou usuário PCEMPR
     if 'rca_codusur' not in session and 'username' not in session:
         return redirect(url_for('main.login_rca'))
     
     # Sempre redefinir as permissões para garantir que estejam corretas
     if 'rca_codusur' in session:
-        # RCA tem permissões básicas incluindo relatório
         session['permissions'] = ['dashboard', 'painel', 'relatorio']
     elif 'username' in session:
-        # Usuário PCEMPR tem todas as permissões
         session['permissions'] = ['dashboard', 'painel', 'relatorio', 'usuarios']
     
-    # Obter a aba ativa dos parâmetros da URL, padrão é 'pendentes'
+    # Obter a aba ativa dos parâmetros da URL
     active_tab = request.args.get('active_tab', 'pendentes')
     
-    # Determinar dados do usuário baseado no tipo de login
+    # Determinar dados do usuário
     if 'rca_codusur' in session:
-        # Usuário RCA
         user_name = session.get('rca_nome')
         user_id = session.get('rca_codusur')
     else:
-        # Usuário PCEMPR
         user_name = session.get('username')
         user_id = session.get('username')
     
     try:
-        # Processar filtros da requisição
-        numped_filtro = request.args.get('numped_pendentes')
-        data_filtro = request.args.get('data_pedido_pendentes')
+        # Parâmetros de paginação
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 25))
+        if per_page not in [25, 50, 75, 100]:
+            per_page = 25
+        offset = (page - 1) * per_page
         
-        # Parâmetros de paginação para pendentes
-        page_pendentes = int(request.args.get('page', 1))
-        per_page_pendentes = int(request.args.get('per_page', 25))
+        # Código RCA
+        codigo_rca = session.get('rca_codusur') if 'rca_codusur' in session else None
         
-        # Validar per_page_pendentes
-        if per_page_pendentes not in [25, 50, 75, 100]:
-            per_page_pendentes = 25
+        # Inicializar variáveis
+        pedidos, total_pedidos = [], 0
+        agendamentos, total_agendamentos = [], 0
+        usuarios = []
+        stats = {'agendados_hoje': 0, 'agendados_7_dias': 0}
         
-        offset_pendentes = (page_pendentes - 1) * per_page_pendentes
+        # OTIMIZAÇÃO: Carregar apenas dados da aba ativa
+        if active_tab == 'dashboard':
+            stats = get_stats_data(codigo_rca=codigo_rca)
+        elif active_tab == 'pendentes':
+            result = get_pedidos_pendentes(codigo_rca, request.args.get('numped_pendentes'), 
+                                          request.args.get('data_pedido_pendentes'), offset, per_page)
+            pedidos, total_pedidos = result if isinstance(result, tuple) else (result, len(result or []))
+        elif active_tab == 'confirmados':
+            result = get_agendamentos_confirmados(codigo_rca, request.args.get('numped_confirmados'),
+                                                 request.args.get('data_de_confirmados'), 
+                                                 request.args.get('data_ate_confirmados'), offset, per_page)
+            agendamentos, total_agendamentos = result if isinstance(result, tuple) else (result, len(result or []))
+        elif active_tab == 'usuarios':
+            usuarios = get_usuarios(request.args.get('rca'), request.args.get('supervisor'))
         
-        # Determinar código RCA se aplicável
-        codigo_rca = None
-        if 'rca_codusur' in session:
-            codigo_rca = session.get('rca_codusur')
-        
-        pedidos_result = get_pedidos_pendentes(
-            codigo_rca=codigo_rca,
-            numped_filtro=numped_filtro,
-            data_filtro=data_filtro,
-            offset=offset_pendentes,
-            per_page=per_page_pendentes
-        )
-        
-        # Desempacotar resultado
-        if isinstance(pedidos_result, tuple):
-            pedidos, total_pedidos = pedidos_result
-        else:
-            pedidos = pedidos_result
-            total_pedidos = len(pedidos) if pedidos else 0
-        
-        # Processar filtros da aba confirmados
-        numped_confirmados = request.args.get('numped_confirmados')
-        data_de_confirmados = request.args.get('data_de_confirmados')
-        data_ate_confirmados = request.args.get('data_ate_confirmados')
-        
-        # Parâmetros de paginação para confirmados
-        page_confirmados = int(request.args.get('page_confirmados', 1))
-        per_page_confirmados = int(request.args.get('per_page_confirmados', 25))
-        
-        # Validar per_page_confirmados
-        if per_page_confirmados not in [25, 50, 75, 100]:
-            per_page_confirmados = 25
-        
-        offset_confirmados = (page_confirmados - 1) * per_page_confirmados
-        
-        agendamentos_result = get_agendamentos_confirmados(
-            codigo_rca=codigo_rca,
-            numped_filtro=numped_confirmados,
-            data_de=data_de_confirmados,
-            data_ate=data_ate_confirmados,
-            offset=offset_confirmados,
-            per_page=per_page_confirmados
-        )
-        
-        # Desempacotar resultado
-        if isinstance(agendamentos_result, tuple):
-            agendamentos, total_agendamentos = agendamentos_result
-        else:
-            agendamentos = agendamentos_result
-            total_agendamentos = len(agendamentos) if agendamentos else 0
-        
-        # Processar filtros da aba usuários
-        filtro_rca = request.args.get('rca')
-        filtro_supervisor = request.args.get('supervisor')
-        
-        # Buscar usuários com filtros aplicados
-        usuarios = get_usuarios(filtro_rca=filtro_rca, filtro_supervisor=filtro_supervisor)
-        
-        stats = get_stats_data(codigo_rca=codigo_rca)
-        
-        # Dados de paginação para confirmados
-        total_pages_confirmados = (total_agendamentos + per_page_confirmados - 1) // per_page_confirmados
-        pagination_confirmados = {
-            'page': page_confirmados,
-            'pages': total_pages_confirmados,
-            'per_page': per_page_confirmados,
-            'total': total_agendamentos
-        }
-        
-        # Dados de paginação para pendentes
-        total_pages_pendentes = (total_pedidos + per_page_pendentes - 1) // per_page_pendentes if total_pedidos > 0 else 1
+        # Paginação
+        total_items = total_pedidos if active_tab == 'pendentes' else total_agendamentos
         pagination = {
-            'page': page_pendentes,
-            'pages': total_pages_pendentes,
-            'per_page': per_page_pendentes,
-            'total': total_pedidos
+            'page': page,
+            'pages': max(1, (total_items + per_page - 1) // per_page),
+            'per_page': per_page,
+            'total': total_items
         }
-        
-        print(f"DEBUG ROUTES: Página {page_pendentes}, Total pedidos encontrados: {len(pedidos)}")
-        print(f"DEBUG ROUTES: Pedidos na página 2: {[p['NUMPED'] for p in pedidos] if pedidos else 'Nenhum'}")
-        print(f"DEBUG ROUTES: Active tab: {active_tab}")
-        print(f"DEBUG ROUTES: Pagination info: page={pagination['page']}, total={pagination['total']}")
-        print(f"DEBUG ROUTES: Primeiro pedido: {pedidos[0] if pedidos else 'Nenhum'}")
-        print(f"DEBUG ROUTES: Template vai receber pedidos_pendentes com {len(pedidos)} itens")
         
         return render_template('painel.html', 
-                             pedidos_pendentes=pedidos, 
+                             pedidos_pendentes=pedidos,
                              agendamentos_confirmados=agendamentos,
                              usuarios=usuarios,
-                             filtro_rca=filtro_rca,
-                             filtro_supervisor=filtro_supervisor,
+                             filtro_rca=request.args.get('rca', ''),
+                             filtro_supervisor=request.args.get('supervisor', ''),
                              stats=stats,
                              rca_nome=user_name,
                              rca_codusur=user_id,
                              active_tab=active_tab,
-                             pagination=pagination,
-                             pagination_confirmados=pagination_confirmados)
+                             pagination=pagination)
     except Exception as e:
-        print(f"ERRO na função listar_painel: {str(e)}")
-        print(f"ERRO - Tipo do erro: {type(e)}")
-        import traceback
-        print(f"ERRO - Traceback: {traceback.format_exc()}")
-        
-        # Em caso de erro, ainda passa dados básicos para evitar erros no template
-        pagination = {
-            'page': 1,
-            'pages': 1,
-            'per_page': 25,
-            'total': 0
-        }
-        
-        pagination_confirmados = {
-            'page': 1,
-            'pages': 1,
-            'per_page': 25,
-            'total': 0
-        }
-        
-        return render_template('painel.html', 
-                             pedidos_pendentes=[], 
+        return render_template('painel.html',
+                             pedidos_pendentes=[],
                              agendamentos_confirmados=[],
                              usuarios=[],
-                             filtro_rca=None,
-                             filtro_supervisor=None,
+                             filtro_rca='',
+                             filtro_supervisor='',
                              stats={'agendados_hoje': 0, 'agendados_7_dias': 0},
                              rca_nome=user_name,
                              rca_codusur=user_id,
                              active_tab=active_tab,
-                             pagination=pagination,
-                             pagination_confirmados=pagination_confirmados,
+                             pagination={'page': 1, 'pages': 1, 'per_page': 25, 'total': 0},
                              error=str(e))
 
 @main_routes.route('/atualizar', methods=['POST'])
