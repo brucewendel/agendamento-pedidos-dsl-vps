@@ -5,7 +5,7 @@ services:
     build: .
     container_name: agendamento-sistema
     ports:
-      - "5000:5000"
+      - "6000:6000" # opcional depois, pode remover
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=False
@@ -16,6 +16,7 @@ services:
       - ./backups:/app/backups
     networks:
       - agendamento-network
+      - npm-network
 
   redis:
     image: redis:latest
@@ -29,3 +30,7 @@ services:
 networks:
   agendamento-network:
     driver: bridge
+
+  npm-network:
+    external: true
+    name: npm-nginx_default

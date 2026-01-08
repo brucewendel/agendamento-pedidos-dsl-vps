@@ -39,5 +39,5 @@ COPY templates/ ./templates/
 COPY .env .
 
 # Comando para iniciar a aplicação usando Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:6000", "--workers", "4", "app:app"]
 
