@@ -138,3 +138,7 @@ logs/
 *.temp
 temp/
 tmp/
+
+# Backup
+bkp/
+backups/

@@ -35,7 +35,9 @@ COPY database.py .
 COPY routes.py .
 COPY charts.py .
 COPY enviarwpp.py .
+COPY rate_limit_config.py .
 COPY templates/ ./templates/
+COPY static/ ./static/
 COPY .env .
 
 # Comando para iniciar a aplicação usando Gunicorn

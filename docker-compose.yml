@@ -5,10 +5,11 @@ services:
     build: .
     container_name: agendamento-sistema
     ports:
-      - "6000:6000" # opcional depois, pode remover
+      - "6000:6000"
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=False
+      - REDIS_HOST=redis
     env_file:
       - .env
     restart: unless-stopped
@@ -17,6 +18,8 @@ services:
     networks:
       - agendamento-network
       - npm-network
+    depends_on:
+      - redis
 
   redis:
     image: redis:latest
