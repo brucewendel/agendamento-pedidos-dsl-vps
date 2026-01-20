@@ -162,6 +162,15 @@ def logout():
     session.clear()
     return redirect(url_for('main.login'))
 
+@main_routes.route('/service-worker.js')
+def service_worker():
+    """Servir o service worker com os headers corretos"""
+    from flask import send_from_directory, make_response
+    response = make_response(send_from_directory('static', 'service-worker.js'))
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
 @main_routes.route('/login-rca', methods=['GET', 'POST'])
 def login_rca():
     """Login para RCAs via WhatsApp"""
