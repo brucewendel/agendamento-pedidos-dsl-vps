@@ -290,9 +290,12 @@ def login_rca():
             codusur = data.get('codusur') or data.get('codigo_rca')  # Suporte para ambos os nomes
             token = data.get('token')
             
+            print(f"[DEBUG] Validando token - codusur recebido: {codusur}, token recebido: '{token}'")
+            
             try:
                 codusur = int(codusur)
             except (ValueError, TypeError):
+                print(f"[DEBUG] Erro ao converter codusur para int: {codusur}")
                 # Para formulário HTML, retorna página com erro
                 if not request.is_json:
                     return render_template('login_rca_modern.html', 
@@ -304,7 +307,9 @@ def login_rca():
                     'message': 'Código de usuário inválido'
                 }), 400
             
+            print(f"[DEBUG] Chamando validate_whatsapp_token com codusur={codusur}, token='{token}'")
             is_valid, user_data = validate_whatsapp_token(codusur, token)
+            print(f"[DEBUG] Resultado da validação: is_valid={is_valid}, user_data={user_data}")
             
             if is_valid and user_data:
                 # Login bem-sucedido

@@ -157,24 +157,41 @@ def create_whatsapp_token(codusur, telefone, nome):
 
 def validate_whatsapp_token(codusur, token):
     """Valida um token WhatsApp para RCA"""
+    print(f"[DEBUG validate_whatsapp_token] Validando token para codusur={codusur}")
+    print(f"[DEBUG validate_whatsapp_token] Token recebido: '{token}' (tipo: {type(token)})")
+    print(f"[DEBUG validate_whatsapp_token] Tokens armazenados: {list(TOKENS_WHATSAPP.keys())}")
+    
     if codusur not in TOKENS_WHATSAPP:
+        print(f"[DEBUG validate_whatsapp_token] codusur {codusur} NÃO encontrado em TOKENS_WHATSAPP")
         return False, None
     
     stored_data = TOKENS_WHATSAPP[codusur]
+    print(f"[DEBUG validate_whatsapp_token] Dados armazenados: {stored_data}")
+    print(f"[DEBUG validate_whatsapp_token] Token armazenado: '{stored_data['token']}' (tipo: {type(stored_data['token'])})")
+    
     current_time = time.time()
+    time_diff = current_time - stored_data['timestamp']
+    print(f"[DEBUG validate_whatsapp_token] Diferença de tempo: {time_diff:.2f} segundos")
     
     # Token expira em 5 minutos (300 segundos)
-    if current_time - stored_data['timestamp'] > 300:
+    if time_diff > 300:
+        print(f"[DEBUG validate_whatsapp_token] Token EXPIRADO (>{time_diff:.2f}s > 300s)")
         del TOKENS_WHATSAPP[codusur]
         return False, None
     
     # Comparar tokens removendo espaços em branco e convertendo para string
-    if str(stored_data['token']).strip() == str(token).strip():
+    token_armazenado = str(stored_data['token']).strip()
+    token_recebido = str(token).strip()
+    print(f"[DEBUG validate_whatsapp_token] Comparando: '{token_armazenado}' == '{token_recebido}'")
+    
+    if token_armazenado == token_recebido:
+        print(f"[DEBUG validate_whatsapp_token] Tokens CORRESPONDEM! Login bem-sucedido.")
         nome = stored_data['nome']
         telefone = stored_data['telefone']
         del TOKENS_WHATSAPP[codusur]  # Remove o token após uso
         return True, {'nome': nome, 'telefone': telefone}
     
+    print(f"[DEBUG validate_whatsapp_token] Tokens NÃO correspondem!")
     return False, None
 
 def log_rca_auth_attempt(codusur, nome, telefone, success, details=""):
