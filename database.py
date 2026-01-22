@@ -608,10 +608,10 @@ def get_kpis_data(codigo_rca=None):
     
     # Queries para KPIs reais usando PCPEDC e DSLTI_PEDAGEND
     queries = {
-        'pedidos_pendentes': f"SELECT COUNT(*) FROM PCPEDC WHERE NOT EXISTS (SELECT 1 FROM DSLTI_PEDAGEND a WHERE a.NUMPED = PCPEDC.NUMPED){rca_filter_pendentes}",
-        'agendamentos_confirmados': f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE a.STATUS = 'CONFIRMADO'{rca_filter}",
+        'pedidos_pendentes': f"SELECT COUNT(*) FROM PCPEDC WHERE DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY') AND NOT EXISTS (SELECT 1 FROM DSLTI_PEDAGEND a WHERE a.NUMPED = PCPEDC.NUMPED){rca_filter_pendentes}",
+        'agendamentos_confirmados': f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY') AND a.STATUS = 'CONFIRMADO'{rca_filter}",
         'usuarios_ativos': "SELECT COUNT(*) FROM DSL.PCUSUARI WHERE DTTERMINO IS NULL" if not codigo_rca else f"SELECT COUNT(*) FROM DSL.PCUSUARI WHERE CODUSUR = {codigo_rca} AND DTTERMINO IS NULL",
-        'entregas_hoje': f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE a.STATUS = 'ENTREGUE' AND TRUNC(a.PREVENTREGA) = TRUNC(SYSDATE){rca_filter}"
+        'entregas_hoje': f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY') AND a.STATUS = 'ENTREGUE' AND TRUNC(a.PREVENTREGA) = TRUNC(SYSDATE){rca_filter}"
     }
     
     kpis = {}
@@ -647,6 +647,7 @@ def calcular_kpis_avancados():
             FROM DSLTI_PEDAGEND a
             JOIN PCPEDC p ON a.NUMPED = p.NUMPED
             WHERE a.PREVENTREGA IS NOT NULL
+            AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
         """
         cursor.execute(sql_tempo_medio)
         tempo_medio = cursor.fetchone()
@@ -654,8 +655,8 @@ def calcular_kpis_avancados():
         # Taxa de conversão de pedidos em agendamentos
         sql_taxa_conversao = """
             SELECT 
-                (SELECT COUNT(*) FROM DSLTI_PEDAGEND) * 100.0 / 
-                NULLIF((SELECT COUNT(*) FROM PCPEDC), 0) as taxa_conversao
+                (SELECT COUNT(*) FROM DSLTI_PEDAGEND a JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')) * 100.0 / 
+                NULLIF((SELECT COUNT(*) FROM PCPEDC WHERE DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')), 0) as taxa_conversao
             FROM DUAL
         """
         cursor.execute(sql_taxa_conversao)
@@ -687,6 +688,7 @@ def calcular_kpis_avancados():
                 FROM DSLTI_PEDAGEND a
                 JOIN PCPEDC p ON a.NUMPED = p.NUMPED
                 WHERE a.PREVENTREGA IS NOT NULL
+                AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
             )
             GROUP BY 
                 CASE 
@@ -750,7 +752,7 @@ def get_graficos_data(codigo_rca=None):
         pedidos_query = f"""
             SELECT TO_CHAR(DATA, 'YYYY-MM-DD') as data, COUNT(*) as quantidade
             FROM PCPEDC
-            WHERE DATA >= SYSDATE - 30{rca_filter_pedidos}
+            WHERE DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY'){rca_filter_pedidos}
             GROUP BY TO_CHAR(DATA, 'YYYY-MM-DD')
             ORDER BY data
         """
@@ -767,7 +769,7 @@ def get_graficos_data(codigo_rca=None):
                 COUNT(*) as quantidade
             FROM PCPEDC p
             LEFT JOIN DSLTI_PEDAGEND a ON p.NUMPED = a.NUMPED
-            WHERE p.DATA >= SYSDATE - 30{rca_filter_pedidos}
+            WHERE p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY'){rca_filter_pedidos}
             GROUP BY 
                 CASE 
                     WHEN a.NUMPED IS NULL THEN 'Pendente'
@@ -785,7 +787,7 @@ def get_graficos_data(codigo_rca=None):
                 INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED
                 INNER JOIN PCUSUARI u ON p.CODUSUR = u.CODUSUR
                 WHERE a.PREVENTREGA IS NOT NULL
-                AND p.DATA >= SYSDATE - 30
+                AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
                 AND p.CODUSUR = {codigo_rca}
                 GROUP BY u.NOME
                 ORDER BY quantidade DESC
@@ -797,7 +799,7 @@ def get_graficos_data(codigo_rca=None):
                 INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED
                 INNER JOIN PCUSUARI u ON p.CODUSUR = u.CODUSUR
                 WHERE a.PREVENTREGA IS NOT NULL
-                AND p.DATA >= SYSDATE - 30
+                AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
                 GROUP BY u.NOME
                 ORDER BY quantidade DESC
                 FETCH FIRST 10 ROWS ONLY
@@ -813,7 +815,7 @@ def get_graficos_data(codigo_rca=None):
                 COUNT(CASE WHEN a.STATUS = 'ENTREGUE' THEN 1 END) as entregues
             FROM PCPEDC p
             LEFT JOIN DSLTI_PEDAGEND a ON p.NUMPED = a.NUMPED
-            WHERE p.DATA >= ADD_MONTHS(SYSDATE, -6){rca_filter_pedidos}
+            WHERE p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY'){rca_filter_pedidos}
             GROUP BY TO_CHAR(p.DATA, 'YYYY-MM'), TO_CHAR(p.DATA, 'Mon/YYYY')
             ORDER BY mes
         """
@@ -831,6 +833,7 @@ def get_graficos_data(codigo_rca=None):
             FROM DSLTI_PEDAGEND a
             INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED
             WHERE a.HORAINI IS NOT NULL
+            AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
             AND a.PREVENTREGA >= SYSDATE - 30{rca_filter_pedidos}
             GROUP BY 
                 CASE 
@@ -850,7 +853,7 @@ def get_graficos_data(codigo_rca=None):
                 ROUND(COUNT(CASE WHEN a.PREVENTREGA IS NOT NULL THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) as taxa_agendamento
             FROM PCPEDC p
             LEFT JOIN DSLTI_PEDAGEND a ON p.NUMPED = a.NUMPED
-            WHERE p.DATA >= SYSDATE - 28{rca_filter_pedidos}
+            WHERE p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY'){rca_filter_pedidos}
             GROUP BY TO_CHAR(p.DATA, 'WW')
             ORDER BY TO_CHAR(p.DATA, 'WW')
         """
@@ -1024,8 +1027,8 @@ def get_stats_data(codigo_rca=None):
         rca_filter = f" AND p.CODUSUR = {codigo_rca}"
     
     # Queries para estatísticas reais usando DSLTI_PEDAGEND
-    hoje_query = f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE TRUNC(a.PREVENTREGA) = TRUNC(SYSDATE) AND p.CODSUPERVISOR NOT IN (9130){rca_filter}"
-    proximos_7_dias_query = f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE a.PREVENTREGA BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE) + 7 AND p.CODSUPERVISOR NOT IN (9130){rca_filter}"
+    hoje_query = f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY') AND TRUNC(a.PREVENTREGA) = TRUNC(SYSDATE) AND p.CODSUPERVISOR NOT IN (9130){rca_filter}"
+    proximos_7_dias_query = f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY') AND a.PREVENTREGA BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE) + 7 AND p.CODSUPERVISOR NOT IN (9130){rca_filter}"
     
     hoje_result = execute_query(hoje_query, fetch_one=True)
     proximos_result = execute_query(proximos_7_dias_query, fetch_one=True)
