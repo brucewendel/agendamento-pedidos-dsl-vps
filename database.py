@@ -834,7 +834,7 @@ def get_graficos_data(codigo_rca=None):
             INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED
             WHERE a.HORAINI IS NOT NULL
             AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
-            AND a.PREVENTREGA >= SYSDATE - 30{rca_filter_pedidos}
+            AND a.PREVENTREGA >= SYSDATE - 30{rca_filter}
             GROUP BY 
                 CASE 
                     WHEN TO_NUMBER(TO_CHAR(a.HORAINI, 'HH24')) BETWEEN 6 AND 11 THEN 'Manhã (6h-12h)'
