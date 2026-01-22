@@ -137,14 +137,13 @@ def notify_admin_rca_login(nome, telefone, success=True):
     
     send_whatsapp_message(NUMERO_ADMIN, message)
 
-
-
-
-
 def create_whatsapp_token(codusur, telefone, nome):
     """Cria e armazena um token WhatsApp para RCA"""
     token = generate_token()
     timestamp = time.time()
+    
+    # Garantir que codusur seja inteiro
+    codusur = int(codusur)
     
     TOKENS_WHATSAPP[codusur] = {
         'token': token,
@@ -153,13 +152,24 @@ def create_whatsapp_token(codusur, telefone, nome):
         'nome': nome
     }
     
+    print(f"[DEBUG create_whatsapp_token] Token '{token}' criado para codusur={codusur} (tipo: {type(codusur)})")
+    print(f"[DEBUG create_whatsapp_token] TOKENS_WHATSAPP agora contém: {list(TOKENS_WHATSAPP.keys())}")
+    
     return token
 
 def validate_whatsapp_token(codusur, token):
     """Valida um token WhatsApp para RCA"""
-    print(f"[DEBUG validate_whatsapp_token] Validando token para codusur={codusur}")
+    print(f"[DEBUG validate_whatsapp_token] Validando token para codusur={codusur} (tipo: {type(codusur)})")
     print(f"[DEBUG validate_whatsapp_token] Token recebido: '{token}' (tipo: {type(token)})")
     print(f"[DEBUG validate_whatsapp_token] Tokens armazenados: {list(TOKENS_WHATSAPP.keys())}")
+    
+    # Garantir que codusur seja inteiro para comparação
+    try:
+        codusur = int(codusur)
+        print(f"[DEBUG validate_whatsapp_token] codusur convertido para int: {codusur}")
+    except (ValueError, TypeError):
+        print(f"[DEBUG validate_whatsapp_token] ERRO ao converter codusur para int")
+        return False, None
     
     if codusur not in TOKENS_WHATSAPP:
         print(f"[DEBUG validate_whatsapp_token] codusur {codusur} NÃO encontrado em TOKENS_WHATSAPP")
