@@ -195,8 +195,9 @@ def log_rca_auth_attempt(codusur, nome, telefone, success, details=""):
     if len(LOGS_AUTH_RCA) > 100:
         LOGS_AUTH_RCA.pop(0)
     
-    # Notifica o admin
-    notify_admin_rca_login(nome, telefone, success)
+    # Notifica o admin apenas em caso de sucesso para evitar spam
+    if success:
+        notify_admin_rca_login(nome, telefone, success)
 
 def get_auth_logs(limit=50):
     """Obtém os logs de autenticação mais recentes"""

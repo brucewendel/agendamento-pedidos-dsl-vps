@@ -174,6 +174,7 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
                 WHERE a.NUMPED = p.NUMPED
             )
             AND p.CODSUPERVISOR NOT IN (9130)
+            AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
         """
         params_count = {}
         
@@ -188,6 +189,7 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
                 WHERE a.NUMPED = p.NUMPED
             )
             AND p.CODSUPERVISOR NOT IN (9130)
+            AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
         """
         params_pedidos = {}
         
