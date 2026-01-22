@@ -361,16 +361,21 @@ def painel():
     if 'rca_codusur' not in session and 'username' not in session:
         return redirect(url_for('main.login_rca'))
     
+    print(f"[DEBUG /painel] Sessão: {dict(session)}")
+    
     # Sempre redefinir as permissões para garantir que estejam corretas
     if 'rca_codusur' in session:
         # RCA tem permissões básicas incluindo relatório
         session['permissions'] = ['dashboard', 'painel', 'relatorio']
+        print(f"[DEBUG /painel] Usuário RCA detectado: codusur={session.get('rca_codusur')}, nome={session.get('rca_nome')}")
     elif 'username' in session:
         # Usuário PCEMPR tem todas as permissões
         session['permissions'] = ['dashboard', 'painel', 'relatorio', 'usuarios']
+        print(f"[DEBUG /painel] Usuário PCEMPR detectado: username={session.get('username')}")
     
     # Obter a aba ativa dos parâmetros da URL, padrão é 'dashboard'
     active_tab = request.args.get('active_tab', 'dashboard')
+    print(f"[DEBUG /painel] Aba ativa: {active_tab}")
     
     # Determinar dados do usuário baseado no tipo de login
     if 'rca_codusur' in session:
@@ -397,6 +402,9 @@ def painel():
         codigo_rca = None
         if 'rca_codusur' in session:
             codigo_rca = session.get('rca_codusur')
+            print(f"[DEBUG /painel] codigo_rca definido: {codigo_rca} (tipo: {type(codigo_rca)})")
+        else:
+            print(f"[DEBUG /painel] Nenhum codigo_rca (usuário administrativo)")
         
         # Inicializar variáveis
         pedidos = []
