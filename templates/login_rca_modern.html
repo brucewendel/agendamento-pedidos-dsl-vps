@@ -276,37 +276,37 @@ function loginRcaForm() {
                 
                 const response = await fetch('/login-rca', {
                     method: 'POST',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
                     body: formData
                 });
                 
-                if (response.ok) {
-                    const html = await response.text();
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Token enviado com sucesso
+                    this.showTokenInput = true;
+                    this.nomeRca = data.nome || '';
                     
-                    if (html.includes('show_token')) {
-                        this.showTokenInput = true;
-                        
-                        const nomeMatch = html.match(/nome=['"]([^'"]+)['"]/);
-                        if (nomeMatch) {
-                            this.nomeRca = nomeMatch[1];
-                        }
-                        
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Token Enviado!',
-                            text: 'Verifique seu WhatsApp e digite o código recebido.',
-                            confirmButtonColor: '#9333ea',
-                            timer: 3000
-                        });
-                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Token Enviado!',
+                        text: 'Verifique seu WhatsApp e digite o código recebido.',
+                        confirmButtonColor: '#9333ea',
+                        timer: 3000
+                    });
+                    
+                    // Focar no campo de token após 100ms
+                    setTimeout(() => {
+                        document.getElementById('token')?.focus();
+                    }, 100);
                 } else {
-                    const html = await response.text();
-                    const errorMatch = html.match(/error=['"]([^'"]+)['"]/);
-                    const errorMsg = errorMatch ? errorMatch[1] : 'Erro ao solicitar token';
-                    
+                    // Erro ao enviar token
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro',
-                        text: errorMsg,
+                        text: data.message || 'Erro ao solicitar token',
                         confirmButtonColor: '#ef4444'
                     });
                 }
@@ -354,21 +354,42 @@ function loginRcaForm() {
                 
                 const response = await fetch('/login-rca', {
                     method: 'POST',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
                     body: formData
                 });
                 
-                if (response.redirected) {
-                    window.location.href = response.url;
-                } else if (response.ok) {
-                    window.location.href = '/painel';
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Login bem-sucedido - redirecionar para o painel
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Login Realizado!',
+                        text: 'Redirecionando...',
+                        confirmButtonColor: '#10b981',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    
+                    setTimeout(() => {
+                        window.location.href = data.redirect || '/painel';
+                    }, 1500);
                 } else {
+                    // Token inválido ou erro
                     Swal.fire({
                         icon: 'error',
                         title: 'Token Inválido',
-                        text: 'O token digitado está incorreto ou expirou. Tente novamente.',
+                        text: data.message || 'O token digitado está incorreto ou expirou. Tente novamente.',
                         confirmButtonColor: '#ef4444'
                     });
                     this.token = '';
+                    
+                    // Focar novamente no campo de token
+                    setTimeout(() => {
+                        document.getElementById('token')?.focus();
+                    }, 100);
                 }
             } catch (error) {
                 console.error('Erro ao validar token:', error);
@@ -379,6 +400,7 @@ function loginRcaForm() {
                     text: 'Ocorreu um erro ao validar o token. Tente novamente.',
                     confirmButtonColor: '#ef4444'
                 });
+                this.token = '';
             } finally {
                 this.loading = false;
             }

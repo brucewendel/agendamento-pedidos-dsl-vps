@@ -190,6 +190,10 @@ def service_worker():
 def login_rca():
     """Login para RCAs via WhatsApp"""
     if request.method == 'POST':
+        # Detectar se é requisição AJAX (fetch do JavaScript)
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+                  'application/json' in request.headers.get('Accept', '')
+        
         # Verifica se os dados vêm como JSON ou FormData
         if request.is_json:
             data = request.get_json()
@@ -222,28 +226,30 @@ def login_rca():
             usuario = get_usuario_by_id(codusur)
             if not usuario:
                 log_rca_auth_attempt(codusur, 'Desconhecido', 'N/A', False, 'Usuário não encontrado')
-                # Para formulário HTML, retorna página com erro
-                if not request.is_json:
-                    return render_template('login_rca_modern.html', 
-                                         error='Usuário não encontrado')
-                return jsonify({
-                    'success': False,
-                    'message': 'Usuário não encontrado'
-                }), 404
+                # Para requisição AJAX, retorna JSON
+                if is_ajax:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Usuário não encontrado'
+                    }), 404
+                # Para formulário HTML tradicional, retorna página com erro
+                return render_template('login_rca_modern.html', 
+                                     error='Usuário não encontrado')
             
             telefone = usuario.get('TELEFONE1')
             nome = usuario.get('NOME')
             
             if not telefone or not validate_phone_number(telefone):
                 log_rca_auth_attempt(codusur, nome, telefone or 'N/A', False, 'Telefone inválido')
-                # Para formulário HTML, retorna página com erro
-                if not request.is_json:
-                    return render_template('login_rca_modern.html', 
-                                         error='Telefone não cadastrado ou inválido')
-                return jsonify({
-                    'success': False,
-                    'message': 'Telefone não cadastrado ou inválido'
-                }), 400
+                # Para requisição AJAX, retorna JSON
+                if is_ajax:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Telefone não cadastrado ou inválido'
+                    }), 400
+                # Para formulário HTML tradicional, retorna página com erro
+                return render_template('login_rca_modern.html', 
+                                     error='Telefone não cadastrado ou inválido')
             
             # Gera e envia token
             token = create_whatsapp_token(codusur, telefone, nome)
@@ -253,29 +259,32 @@ def login_rca():
             
             if send_whatsapp_token(telefone_formatado, token, nome):
                 print(f"Token enviado com sucesso para {telefone_formatado}")
-                # Para formulário HTML, mostra tela de token
-                if not request.is_json:
-                    return render_template('login_rca_modern.html', 
-                                         show_token=True, 
-                                         codigo_rca=codusur,
-                                         nome=nome,
-                                         success=f'Token enviado via WhatsApp para {nome}')
-                return jsonify({
-                    'success': True,
-                    'message': f'Token enviado via WhatsApp para {nome}',
-                    'nome': nome
-                })
+                # Para requisição AJAX, retorna JSON
+                if is_ajax:
+                    return jsonify({
+                        'success': True,
+                        'message': f'Token enviado via WhatsApp para {nome}',
+                        'nome': nome,
+                        'show_token': True
+                    })
+                # Para formulário HTML tradicional, mostra tela de token
+                return render_template('login_rca_modern.html', 
+                                     show_token=True, 
+                                     codigo_rca=codusur,
+                                     nome=nome,
+                                     success=f'Token enviado via WhatsApp para {nome}')
             else:
                 print(f"Falha ao enviar token para {telefone_formatado}")
                 log_rca_auth_attempt(codusur, nome, telefone, False, 'Falha no envio do WhatsApp')
-                # Para formulário HTML, retorna página com erro
-                if not request.is_json:
-                    return render_template('login_rca_modern.html', 
-                                         error='Erro ao enviar token via WhatsApp')
-                return jsonify({
-                    'success': False,
-                    'message': 'Erro ao enviar token via WhatsApp'
-                }), 500
+                # Para requisição AJAX, retorna JSON
+                if is_ajax:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Erro ao enviar token via WhatsApp'
+                    }), 500
+                # Para formulário HTML tradicional, retorna página com erro
+                return render_template('login_rca_modern.html', 
+                                     error='Erro ao enviar token via WhatsApp')
         
         elif step == 'validate_token':
             codusur = data.get('codusur') or data.get('codigo_rca')  # Suporte para ambos os nomes
@@ -305,15 +314,16 @@ def login_rca():
                 
                 log_rca_auth_attempt(codusur, user_data['nome'], user_data['telefone'], True, 'Login bem-sucedido')
                 
-                # Para formulário HTML, redireciona diretamente
-                if not request.is_json:
-                    return redirect(url_for('main.painel'))
+                # Para requisição AJAX, retorna JSON com URL de redirecionamento
+                if is_ajax:
+                    return jsonify({
+                        'success': True,
+                        'message': 'Login realizado com sucesso!',
+                        'redirect': url_for('main.painel')
+                    })
                 
-                return jsonify({
-                    'success': True,
-                    'message': 'Login realizado com sucesso!',
-                    'redirect': url_for('main.painel')
-                })
+                # Para formulário HTML tradicional, redireciona diretamente
+                return redirect(url_for('main.painel'))
             else:
                 # Busca dados do usuário para log
                 usuario = get_usuario_by_id(codusur)
@@ -322,17 +332,18 @@ def login_rca():
                 
                 log_rca_auth_attempt(codusur, nome, telefone, False, 'Token inválido ou expirado')
                 
-                # Para formulário HTML, retorna página com erro
-                if not request.is_json:
-                    return render_template('login_rca_modern.html', 
-                                         show_token=True, 
-                                         codigo_rca=data.get('codigo_rca', ''),
-                                         error='Token inválido ou expirado')
+                # Para requisição AJAX, retorna JSON
+                if is_ajax:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Token inválido ou expirado'
+                    }), 401
                 
-                return jsonify({
-                    'success': False,
-                    'message': 'Token inválido ou expirado'
-                }), 401
+                # Para formulário HTML tradicional, retorna página com erro
+                return render_template('login_rca_modern.html', 
+                                     show_token=True, 
+                                     codigo_rca=data.get('codigo_rca', ''),
+                                     error='Token inválido ou expirado')
     
     # Limpa tokens expirados
     cleanup_expired_tokens()
