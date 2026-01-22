@@ -156,8 +156,11 @@ def execute_query(query, params=None, fetch_one=False, fetch_all=True):
 
 def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None, offset=0, per_page=25):
     """Obtém pedidos da PCPEDC que ainda não foram agendados (não existem na DSLTI_PEDAGEND)"""
+    print(f"[DEBUG get_pedidos_pendentes] Chamada com codigo_rca={codigo_rca} (tipo: {type(codigo_rca)})")
+    
     connection = get_connection()
     if not connection:
+        print(f"[DEBUG get_pedidos_pendentes] Falha na conexão com banco de dados")
         return [], 0
     
     try:
@@ -195,10 +198,13 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
         
         # Adicionar filtro por RCA se necessário
         if codigo_rca:
+            print(f"[DEBUG get_pedidos_pendentes] Aplicando filtro por RCA: {codigo_rca}")
             sql_count += " AND p.CODUSUR = :codigo_rca"
             sql_pedidos += " AND p.CODUSUR = :codigo_rca"
             params_count['codigo_rca'] = codigo_rca
             params_pedidos['codigo_rca'] = codigo_rca
+        else:
+            print(f"[DEBUG get_pedidos_pendentes] Nenhum filtro de RCA aplicado")
         
         # Adicionar filtros adicionais
         if numped_filtro:
@@ -214,8 +220,10 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
             params_pedidos['data_p'] = data_filtro
         
         # Executar contagem
+        print(f"[DEBUG get_pedidos_pendentes] Executando query de contagem com params: {params_count}")
         cursor.execute(sql_count, params_count)
         total_pendentes = cursor.fetchone()[0]
+        print(f"[DEBUG get_pedidos_pendentes] Total de pedidos pendentes encontrados: {total_pendentes}")
         
         # Aplicar paginação na consulta principal
         sql_pedidos += " ORDER BY p.DATA DESC, p.NUMPED DESC"
@@ -223,9 +231,11 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
         params_pedidos['offset'] = offset
         params_pedidos['per_page'] = per_page
         
+        print(f"[DEBUG get_pedidos_pendentes] Executando query de pedidos com params: {params_pedidos}")
         cursor.execute(sql_pedidos, params_pedidos)
         columns = [col[0] for col in cursor.description]
         pedidos_pendentes = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        print(f"[DEBUG get_pedidos_pendentes] Retornando {len(pedidos_pendentes)} pedidos")
         
         return pedidos_pendentes, total_pendentes
         
