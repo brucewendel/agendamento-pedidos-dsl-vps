@@ -37,16 +37,6 @@ limiter.limit(RATE_LIMITS['api_graficos'])(app.view_functions['main.api_graficos
 limiter.limit(RATE_LIMITS['agendamento'])(app.view_functions['main.atualizar'])
 limiter.limit(RATE_LIMITS['agendamento_massa'])(app.view_functions['main.atualizar_massa'])
 
-# Rota para servir o manifest.json
-@app.route('/manifest.json')
-def manifest():
-    return send_from_directory('static', 'manifest.json', mimetype='application/json')
-
-# Rota para servir o service-worker.js
-@app.route('/service-worker.js')
-def service_worker():
-    return send_from_directory('static', 'service-worker.js', mimetype='application/javascript')
-
 # Rota para página offline
 @app.route('/offline')
 def offline():

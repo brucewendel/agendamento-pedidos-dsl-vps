@@ -88,6 +88,11 @@ def index():
 def login_modern():
     """Página de login modernizada com PWA"""
     if request.method == 'POST':
+        # Detectar se é requisição AJAX/fetch (verifica headers)
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+                  request.accept_mimetypes.accept_json and \
+                  not request.accept_mimetypes.accept_html
+        
         # Aceita tanto dados JSON quanto form-data
         if request.is_json:
             data = request.get_json()
@@ -118,23 +123,24 @@ def login_modern():
                 }
                 session['permissions'] = ['dashboard', 'painel', 'relatorio', 'usuarios']
             
-            # Se for requisição JSON, retorna JSON
-            if request.is_json:
+            # Se for requisição AJAX/JSON, retorna JSON
+            if request.is_json or is_ajax:
                 return jsonify({
                     'success': True,
-                    'redirect': url_for('main.index')
+                    'redirect': url_for('main.painel')
                 })
             else:
-                # Se for form-data, redireciona diretamente
+                # Se for form-data tradicional, redireciona diretamente
                 return redirect(url_for('main.painel'))
         else:
-            if request.is_json:
+            # Erro de autenticação
+            if request.is_json or is_ajax:
                 return jsonify({
                     'success': False,
                     'message': 'Credenciais inválidas'
                 }), 401
             else:
-                # Para form-data, renderiza a página com erro
+                # Para form-data tradicional, renderiza a página com erro
                 return render_template('login_modern.html', error='Credenciais inválidas')
     
     return render_template('login_modern.html')
@@ -162,6 +168,14 @@ def logout():
     session.clear()
     return redirect(url_for('main.login'))
 
+@main_routes.route('/manifest.json')
+def manifest():
+    """Servir o manifest.json com os headers corretos"""
+    from flask import send_from_directory, make_response
+    response = make_response(send_from_directory('static', 'manifest.json'))
+    response.headers['Content-Type'] = 'application/manifest+json'
+    return response
+
 @main_routes.route('/service-worker.js')
 def service_worker():
     """Servir o service worker com os headers corretos"""
@@ -169,6 +183,7 @@ def service_worker():
     response = make_response(send_from_directory('static', 'service-worker.js'))
     response.headers['Content-Type'] = 'application/javascript'
     response.headers['Service-Worker-Allowed'] = '/'
+    response.headers['Cache-Control'] = 'no-cache'
     return response
 
 @main_routes.route('/login-rca', methods=['GET', 'POST'])
@@ -384,6 +399,11 @@ def painel():
             # Carregar apenas pedidos pendentes
             numped_filtro = request.args.get('numped_pendentes')
             data_filtro = request.args.get('data_pedido_pendentes')
+            codigo_rca_filtro = request.args.get('codigo_rca_pendentes')
+            
+            # Se usuário administrativo fornecer filtro de código RCA, usar ele ao invés do código da sessão
+            if 'username' in session and codigo_rca_filtro:
+                codigo_rca = codigo_rca_filtro
             
             pedidos_result = get_pedidos_pendentes(
                 codigo_rca=codigo_rca,
@@ -456,7 +476,8 @@ def painel():
                              rca_codusur=user_id,
                              active_tab=active_tab,
                              pagination=pagination,
-                             pagination_confirmados=pagination_confirmados)
+                             pagination_confirmados=pagination_confirmados,
+                             is_admin=session.get('user_type') in ['admin', 'pcempr'])
     except Exception as e:
         # Em caso de erro, ainda passa dados básicos para evitar erros no template
         pagination = {
@@ -484,6 +505,7 @@ def painel():
                              active_tab=active_tab,
                              pagination=pagination,
                              pagination_confirmados=pagination_confirmados,
+                             is_admin=session.get('user_type') in ['admin', 'pcempr'],
                              error=str(e))
 
 @main_routes.route('/listar_painel')
@@ -531,6 +553,11 @@ def listar_painel():
         if active_tab == 'dashboard':
             stats = get_stats_data(codigo_rca=codigo_rca)
         elif active_tab == 'pendentes':
+            # Se usuário administrativo fornecer filtro de código RCA, usar ele ao invés do código da sessão
+            codigo_rca_filtro = request.args.get('codigo_rca_pendentes')
+            if 'username' in session and codigo_rca_filtro:
+                codigo_rca = codigo_rca_filtro
+            
             result = get_pedidos_pendentes(codigo_rca, request.args.get('numped_pendentes'), 
                                           request.args.get('data_pedido_pendentes'), offset, per_page)
             pedidos, total_pedidos = result if isinstance(result, tuple) else (result, len(result or []))
@@ -568,7 +595,8 @@ def listar_painel():
                              rca_codusur=user_id,
                              active_tab=active_tab,
                              pagination=pagination,
-                             pagination_confirmados=pagination_confirmados)
+                             pagination_confirmados=pagination_confirmados,
+                             is_admin=session.get('user_type') in ['admin', 'pcempr'])
     except Exception as e:
         pagination = {
             'page': 1,
@@ -594,6 +622,7 @@ def listar_painel():
                              active_tab=active_tab,
                              pagination=pagination,
                              pagination_confirmados=pagination_confirmados,
+                             is_admin=session.get('user_type') in ['admin', 'pcempr'],
                              error=str(e))
 
 @main_routes.route('/atualizar', methods=['POST'])
@@ -1043,3 +1072,4 @@ def atualizar_telefone():
         return render_template('atualizar_telefone.html', usuarios=usuarios_list)
     except Exception as e:
         return render_template('atualizar_telefone.html', error=str(e))
+

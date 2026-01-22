@@ -52,7 +52,7 @@ docker-compose down
 docker build -t agendamento-sistema .
 
 # Executar o container
-docker run -p 5000:5000 --env-file .env agendamento-sistema
+docker run -p 6000:6000 --env-file .env agendamento-sistema
 ```
 
 ## 🔧 Comandos úteis
@@ -98,7 +98,7 @@ O container monta o diretório `./backups` para persistir backups:
 
 Após iniciar o container, acesse:
 
-- **URL:** http://localhost:5000
+- **URL:** http://localhost:6000
 - **Login:** admin
 - **Senha:** admin
 
@@ -113,7 +113,7 @@ O container executa com usuário não-root (`appuser`) para maior segurança.
 1. Verifique se o arquivo `.env` existe e está configurado
 2. Verifique se as portas não estão em uso:
    ```bash
-   netstat -an | grep 5000
+   netstat -an | grep 6000
    ```
 
 ### Problema: Erro de conexão com banco

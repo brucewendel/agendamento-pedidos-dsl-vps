@@ -40,18 +40,18 @@ O sistema foi modernizado com **Progressive Web App (PWA)**, **Tailwind CSS** e 
 python app.py
 ```
 
-O servidor estará disponível em: `http://localhost:5000`
+O servidor estará disponível em: `http://localhost:6000`
 
 ### **2. Acessar o Sistema**
 
 **Opção A - Login Moderno (Novo):**
-- Acesse: `http://localhost:5000/login_modern.html`
+- Acesse: `http://localhost:6000/login_modern.html`
 - Interface moderna com Tailwind CSS
 - Suporte a dark mode
 - Validação em tempo real
 
 **Opção B - Login Original:**
-- Acesse: `http://localhost:5000/login`
+- Acesse: `http://localhost:6000/login`
 - Interface original mantida
 
 ### **3. Instalar como PWA**
@@ -103,7 +103,7 @@ Os ícones do PWA precisam ser gerados:
 
 ### **Método 1 - Gerador Automático (Recomendado):**
 
-1. Abra no navegador: `http://localhost:5000/static/icons/generate-icons.html`
+1. Abra no navegador: `http://localhost:6000/static/icons/generate-icons.html`
 2. Os ícones serão gerados automaticamente
 3. Clique em "Baixar" em cada ícone
 4. Salve todos na pasta `static/icons/`

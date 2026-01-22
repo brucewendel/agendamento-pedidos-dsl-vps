@@ -58,7 +58,7 @@ agendamento/
 - **Windows**: Execute `Iniciar.bat`
 - **Manual**: `python app.py`
 
-A aplicação estará disponível em `http://localhost:5000`
+A aplicação estará disponível em `http://localhost:6000`
 
 ## 🔐 Autenticação
 

@@ -1,11 +1,11 @@
-import oracledb
+import cx_Oracle
 from datetime import datetime, date
 import json
 import redis
+from flask import session
 from config import DB_USER, DB_PASSWORD, DB_DSN, REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
 
-# Inicializa o modo "Thick" do Oracle
-oracledb.init_oracle_client()
+# Usando cx_Oracle para melhor compatibilidade com Oracle Database
 
 # Inicializa o cliente Redis
 try:
@@ -55,17 +55,73 @@ def cache_data(key_prefix, ex=300): # ex é o tempo de expiração em segundos (
         return wrapper
     return decorator
 
-def get_connection():
-    """Obtém uma conexão com o banco de dados Oracle"""
+def get_connection(app_user=None):
+    """Obtém uma conexão com o banco de dados Oracle
+    
+    Args:
+        app_user: Nome do usuário da aplicação (PCEMPR ou RCA) para auditoria
+    """
     try:
-        connection = oracledb.connect(
+        connection = cx_Oracle.connect(
             user=DB_USER,
             password=DB_PASSWORD,
             dsn=DB_DSN
         )
+        
+        # Definir CLIENT_IDENTIFIER para auditoria (se usuário fornecido)
+        if app_user and connection:
+            try:
+                cursor = connection.cursor()
+                cursor.execute(
+                    "BEGIN DBMS_SESSION.SET_IDENTIFIER(:app_user); END;",
+                    {'app_user': app_user}
+                )
+                cursor.close()
+            except Exception as e:
+                print(f"Aviso: Não foi possível definir CLIENT_IDENTIFIER: {e}")
+        
         return connection
     except Exception as e:
         print(f"Erro ao conectar com o banco: {e}")
+        return None
+
+def get_app_user_name():
+    """Obtém o nome do usuário logado na aplicação para auditoria
+    
+    Returns:
+        str: Nome do usuário (PCEMPR.NOME_GUERRA ou PCUSUARI.NOME)
+    """
+    try:
+        # Verificar se é usuário RCA
+        if 'rca_nome' in session:
+            return session['rca_nome']
+        
+        # Verificar se é usuário administrativo (PCEMPR)
+        if 'username' in session:
+            # Buscar NOME_GUERRA da PCEMPR
+            connection = get_connection()
+            if connection:
+                try:
+                    cursor = connection.cursor()
+                    cursor.execute(
+                        "SELECT NOME_GUERRA FROM PCEMPR WHERE MATRICULA = :username",
+                        {'username': session['username']}
+                    )
+                    result = cursor.fetchone()
+                    cursor.close()
+                    connection.close()
+                    
+                    if result and result[0]:
+                        return result[0]
+                    else:
+                        # Se não encontrar NOME_GUERRA, retorna o username
+                        return session['username']
+                except:
+                    connection.close()
+                    return session['username']
+        
+        return None
+    except:
         return None
 
 def execute_query(query, params=None, fetch_one=False, fetch_all=True):
@@ -117,6 +173,7 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
                 SELECT 1 FROM DSLTI_PEDAGEND a 
                 WHERE a.NUMPED = p.NUMPED
             )
+            AND p.CODSUPERVISOR NOT IN (9130)
         """
         params_count = {}
         
@@ -130,6 +187,7 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
                 SELECT 1 FROM DSLTI_PEDAGEND a 
                 WHERE a.NUMPED = p.NUMPED
             )
+            AND p.CODSUPERVISOR NOT IN (9130)
         """
         params_pedidos = {}
         
@@ -339,7 +397,10 @@ def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, obs
     """Insere um novo agendamento na tabela DSLTI_PEDAGEND com validações de data"""
     from datetime import datetime, timedelta
     
-    connection = get_connection()
+    # Obter nome do usuário da aplicação para auditoria
+    app_user = get_app_user_name()
+    
+    connection = get_connection(app_user=app_user)
     if not connection:
         return {'status': 'error', 'message': 'Erro de conexão com o banco de dados'}
     
@@ -417,7 +478,10 @@ def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, hora
     if not numpeds_list:
         return {'status': 'error', 'message': 'Nenhum pedido foi selecionado.'}
     
-    connection = get_connection()
+    # Obter nome do usuário da aplicação para auditoria
+    app_user = get_app_user_name()
+    
+    connection = get_connection(app_user=app_user)
     if not connection:
         return {'status': 'error', 'message': 'Erro de conexão com o banco de dados'}
     
@@ -958,8 +1022,8 @@ def get_stats_data(codigo_rca=None):
         rca_filter = f" AND p.CODUSUR = {codigo_rca}"
     
     # Queries para estatísticas reais usando DSLTI_PEDAGEND
-    hoje_query = f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE TRUNC(a.PREVENTREGA) = TRUNC(SYSDATE){rca_filter}"
-    proximos_7_dias_query = f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE a.PREVENTREGA BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE) + 7{rca_filter}"
+    hoje_query = f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE TRUNC(a.PREVENTREGA) = TRUNC(SYSDATE) AND p.CODSUPERVISOR NOT IN (9130){rca_filter}"
+    proximos_7_dias_query = f"SELECT COUNT(*) FROM DSLTI_PEDAGEND a INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED WHERE a.PREVENTREGA BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE) + 7 AND p.CODSUPERVISOR NOT IN (9130){rca_filter}"
     
     hoje_result = execute_query(hoje_query, fetch_one=True)
     proximos_result = execute_query(proximos_7_dias_query, fetch_one=True)
