@@ -673,18 +673,29 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            padding: 12px 24px;
+            gap: 6px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             cursor: pointer;
             transition: all 0.2s ease;
             text-decoration: none;
             color: white;
             background: var(--primary);
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+        }
+        
+        /* Botões dentro de tabelas - mais compactos */
+        table .btn {
+            padding: 5px 8px;
+            font-size: 0.75rem;
+            gap: 3px;
+        }
+        
+        table .btn i {
+            font-size: 0.85rem;
         }
         
         .btn:hover {
@@ -762,28 +773,67 @@
             overflow-x: auto;
             border-radius: 12px;
             border: 1px solid var(--border-light);
+            width: 100%;
         }
         
         table {
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
             border-collapse: collapse;
             background: var(--card-bg-light);
         }
         
         th, td {
-            padding: 16px;
+            padding: 10px;
             text-align: left;
             border-bottom: 1px solid var(--border-light);
+            white-space: nowrap;
+        }
+        
+        /* Espaçamento igual para ambas as tabelas */
+        #pendentes th, #pendentes td {
+            padding: 10px;
+        }
+        
+        th:first-child, td:first-child {
+            padding-left: 12px;
+        }
+        
+        th:last-child, td:last-child {
+            padding-right: 12px;
         }
         
         th {
             background: var(--bg-light);
             font-weight: 600;
             color: var(--dark-gray);
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
+        
+        /* Colunas específicas com largura controlada - Tabela de Confirmados */
+        #confirmados th:nth-child(1), #confirmados td:nth-child(1) { width: 40px; } /* Checkbox */
+        #confirmados th:nth-child(2), #confirmados td:nth-child(2) { width: 70px; } /* Ped. RCA */
+        #confirmados th:nth-child(3), #confirmados td:nth-child(3) { width: 85px; } /* Nº Pedido */
+        #confirmados th:nth-child(4), #confirmados td:nth-child(4) { max-width: 180px; overflow: hidden; text-overflow: ellipsis; } /* Cliente */
+        #confirmados th:nth-child(5), #confirmados td:nth-child(5) { width: 60px; white-space: normal !important; } /* Nota Fiscal - com quebra */
+        #confirmados th:nth-child(6), #confirmados td:nth-child(6) { width: 70px; } /* Carregamento */
+        #confirmados th:nth-child(7), #confirmados td:nth-child(7) { width: 75px; white-space: normal !important; } /* Previsão Entrega - com quebra */
+        #confirmados th:nth-child(8), #confirmados td:nth-child(8) { width: 75px; } /* Horário */
+        #confirmados th:nth-child(9), #confirmados td:nth-child(9) { width: 120px; } /* Observação */
+        #confirmados th:nth-child(10), #confirmados td:nth-child(10) { width: 85px; white-space: normal !important; } /* Status */
+        #confirmados th:nth-child(11), #confirmados td:nth-child(11) { width: 80px; } /* Ações */
+        
+        /* Colunas específicas com largura controlada - Tabela de Pendentes */
+        #pendentes th:nth-child(1), #pendentes td:nth-child(1) { width: 40px; } /* Checkbox */
+        #pendentes th:nth-child(2), #pendentes td:nth-child(2) { width: 70px; } /* Ped. RCA */
+        #pendentes th:nth-child(3), #pendentes td:nth-child(3) { width: 100px; } /* Nº Pedido */
+        #pendentes th:nth-child(4), #pendentes td:nth-child(4) { max-width: 280px; overflow: hidden; text-overflow: ellipsis; } /* Cliente */
+        #pendentes th:nth-child(5), #pendentes td:nth-child(5) { width: 85px; } /* Nota Fiscal */
+        #pendentes th:nth-child(6), #pendentes td:nth-child(6) { width: 95px; } /* Carregamento */
+        #pendentes th:nth-child(7), #pendentes td:nth-child(7) { width: 100px; } /* Data Pedido */
+        #pendentes th:nth-child(8), #pendentes td:nth-child(8) { width: 95px; } /* Ações */
         
         tbody tr {
             transition: all 0.2s ease;
@@ -795,6 +845,69 @@
         
         .clickable-row {
             cursor: pointer;
+        }
+        
+        /* Horário container - mais compacto */
+        .horario-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .horario-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+        }
+        
+        /* Ajustes para colunas específicas */
+        td strong {
+            font-size: 0.9rem;
+        }
+        
+        /* Reduzir tamanho de fonte em células */
+        tbody td {
+            font-size: 0.85rem;
+        }
+        
+        /* Observação truncada */
+        .observacao-cell {
+            max-width: 200px;
+            position: relative;
+        }
+        
+        .observacao-truncada {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: help;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            background: rgba(59, 130, 246, 0.05);
+        }
+        
+        .observacao-truncada:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .observacao-texto {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 150px;
+        }
+        
+        .observacao-icon {
+            color: var(--primary);
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        
+        .observacao-vazia {
+            color: var(--light-gray);
+            font-style: italic;
         }
         
         /* Modal */
@@ -1717,6 +1830,7 @@
                         <thead>
                             <tr>
                                 <th><input type="checkbox" id="selectAllCheckbox"></th>
+                                <th>Ped. RCA</th>
                                 <th>Nº Pedido</th>
                                 <th>Cliente</th>
                                 <th>Nota Fiscal</th>
@@ -1733,6 +1847,7 @@
                                 <td onclick="event.stopPropagation();">
                                     <input type="checkbox" class="pedido-checkbox" value="{{ pedido['NUMPED'] }}">
                                 </td>
+                                <td>{{ pedido['NUMPEDRCA'] | none_to_dash }}</td>
                                 <td><strong>{{ pedido['NUMPED'] }}</strong></td>
                                 <td>{{ pedido['CLIENTE'] | none_to_dash }}</td>
                                 <td>{{ pedido['NUMNOTA'] | none_to_dash }}</td>
@@ -1748,7 +1863,7 @@
                             {% else %}
                             <!-- DEBUG: Nenhum pedido encontrado, exibindo mensagem -->
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 20px; color: var(--dark-gray);">
+                                <td colspan="8" style="text-align: center; padding: 20px; color: var(--dark-gray);">
                                     <i class="bi bi-inbox" style="font-size: 1.5rem; margin-bottom: 6px; display: block;"></i>
                                     Nenhum pedido pendente encontrado.
                                 </td>
@@ -1849,12 +1964,20 @@
                         <i class="bi bi-printer"></i>
                         Imprimir
                     </button>
+                    {% if is_admin %}
+                    <button id="bulkEditBtn" class="btn btn-success" disabled onclick="abrirModalEdicaoMassa()">
+                        <i class="bi bi-pencil-square"></i>
+                        Editar Selecionados
+                    </button>
+                    {% endif %}
                 </div>
                 
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
+                                {% if is_admin %}<th><input type="checkbox" id="selectAllCheckboxConfirmados"></th>{% endif %}
+                                <th>Ped. RCA</th>
                                 <th>Nº Pedido</th>
                                 <th>Cliente</th>
                                 <th>Nota Fiscal</th>
@@ -1863,23 +1986,45 @@
                                 <th>Horário</th>
                                 <th>Observação</th>
                                 <th>Status</th>
+                                {% if is_admin %}<th>Ações</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for agendamento in agendamentos_confirmados %}
                             <tr class="clickable-row" data-numped="{{ agendamento.NUMPED }}">
+                                {% if is_admin %}
+                                <td onclick="event.stopPropagation();">
+                                    <input type="checkbox" class="agendamento-checkbox" value="{{ agendamento.NUMPED }}">
+                                </td>
+                                {% endif %}
+                                <td>{{ agendamento.NUMPEDRCA | none_to_dash }}</td>
                                 <td><strong>{{ agendamento.NUMPED }}</strong></td>
                                 <td>{{ agendamento.CLIENTE | none_to_dash }}</td>
-                                    <td>{{ agendamento.NUMNOTA | none_to_dash }}</td>
-                                    <td>{{ agendamento.NUMCAR | none_to_dash }}</td>
+                                <td>{{ agendamento.NUMNOTA | none_to_dash }}</td>
+                                <td>{{ agendamento.NUMCAR | none_to_dash }}</td>
                                 <td><strong>{{ agendamento.PREVENTREGA.strftime('%d/%m/%Y') if agendamento.PREVENTREGA else '-' }}</strong></td>
                                 <td>
                                     <div class="horario-container">
                                         <span class="horario-item"><i class="bi bi-clock"></i> {{ agendamento.HORAINI | none_to_dash }}</span>
-                                <span class="horario-item"><i class="bi bi-clock"></i> {{ agendamento.HORAFIM | none_to_dash }}</span>
+                                        <span class="horario-item"><i class="bi bi-clock"></i> {{ agendamento.HORAFIM | none_to_dash }}</span>
                                     </div>
                                 </td>
-                                <td>{{ agendamento.OBSERVACAO | none_to_dash }}</td>
+                                <td class="observacao-cell">
+                                    {% if agendamento.OBSERVACAO and agendamento.OBSERVACAO != '-' %}
+                                        <div class="observacao-truncada" 
+                                             data-numped="{{ agendamento.NUMPED }}"
+                                             data-observacao="{{ agendamento.OBSERVACAO }}"
+                                             data-cliente="{{ agendamento.CLIENTE | none_to_dash }}"
+                                             data-data="{{ agendamento.PREVENTREGA.strftime('%d/%m/%Y') if agendamento.PREVENTREGA else '-' }}"
+                                             onclick="event.stopPropagation(); abrirModalObservacaoFromData(this)" 
+                                             title="Clique para ver observação completa">
+                                            <i class="bi bi-chat-left-text observacao-icon"></i>
+                                            <span class="observacao-texto">{{ agendamento.OBSERVACAO }}</span>
+                                        </div>
+                                    {% else %}
+                                        <span class="observacao-vazia">Sem observação</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if agendamento.STATUS_ENTREGA %}
                                         {% if 'ENTREGUE' in agendamento.STATUS_ENTREGA|upper %}
@@ -1900,10 +2045,18 @@
                                         </span>
                                     {% endif %}
                                 </td>
+                                {% if is_admin %}
+                                <td onclick="event.stopPropagation();">
+                                    <button class="btn btn-success" onclick="abrirModalEdicao({{ agendamento.NUMPED }}, '{{ agendamento.PREVENTREGA.strftime('%Y-%m-%d') if agendamento.PREVENTREGA else '' }}', '{{ agendamento.HORAINI[:5] if agendamento.HORAINI else '' }}', '{{ agendamento.HORAFIM[:5] if agendamento.HORAFIM else '' }}', '{{ agendamento.OBSERVACAO if agendamento.OBSERVACAO else '' }}')">
+                                        <i class="bi bi-pencil-square"></i>
+                                        Editar
+                                    </button>
+                                </td>
+                                {% endif %}
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 20px; color: var(--dark-gray);">
+                                <td colspan="{% if is_admin %}11{% else %}9{% endif %}" style="text-align: center; padding: 20px; color: var(--dark-gray);">
                                     <i class="bi bi-inbox" style="font-size: 1.5rem; margin-bottom: 6px; display: block;"></i>
                                     Nenhum agendamento encontrado.
                                 </td>
@@ -2154,6 +2307,142 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal de Edição de Agendamento -->
+    <div id="editAgendamentoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="fecharModalEdicao()">&times;</span>
+            <h2 style="margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                <i class="bi bi-pencil-square" style="color: var(--success);"></i>
+                Editar Agendamento
+            </h2>
+            <form id="editAgendamentoForm">
+                <input type="hidden" id="edit_numped" name="numped">
+                
+                <div class="form-group">
+                    <label class="form-label">Data de Entrega:</label>
+                    <input type="date" class="form-input" id="edit_preventrega" name="preventrega" required>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Horário Início:</label>
+                        <input type="time" class="form-input" id="edit_horaini" name="horaini" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Horário Fim:</label>
+                        <input type="time" class="form-input" id="edit_horafim" name="horafim" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Observação:</label>
+                    <textarea class="form-input" id="edit_observacao" name="observacao" rows="3" 
+                              placeholder="Observações adicionais (opcional)"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalEdicao()">
+                        <i class="bi bi-x-circle"></i>
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i>
+                        Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Edição em Massa de Agendamentos -->
+    <div id="bulkEditAgendamentoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="fecharModalEdicaoMassa()">&times;</span>
+            <h2 style="margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                <i class="bi bi-pencil-square" style="color: var(--success);"></i>
+                Editar Múltiplos Agendamentos
+            </h2>
+            <p style="margin-bottom: 24px; color: var(--dark-gray);">
+                A data e hora abaixo serão aplicadas a <strong id="selectedEditCount">0</strong> agendamento(s) selecionado(s).
+            </p>
+            <form id="bulkEditAgendamentoForm">
+                <input type="hidden" id="numpeds_edit_selecionados" name="numpeds_selecionados">
+                
+                <div class="form-group">
+                    <label class="form-label">Data de Entrega:</label>
+                    <input type="date" class="form-input" name="preventrega" required>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Horário Início:</label>
+                        <input type="time" class="form-input" name="horaini" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Horário Fim:</label>
+                        <input type="time" class="form-input" name="horafim" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Observação:</label>
+                    <textarea class="form-input" name="observacao" rows="3" 
+                              placeholder="Observações adicionais (opcional)"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalEdicaoMassa()">
+                        <i class="bi bi-x-circle"></i>
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i>
+                        Salvar Todos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Visualização de Observação -->
+    <div id="observacaoModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-button" onclick="fecharModalObservacao()">&times;</span>
+            <h2 style="margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                <i class="bi bi-chat-left-text" style="color: var(--primary);"></i>
+                Observação do Pedido
+            </h2>
+            
+            <div style="background: rgba(59, 130, 246, 0.05); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid var(--primary);">
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 12px 16px; font-size: 0.9rem;">
+                    <strong style="color: var(--dark-gray);">Pedido:</strong>
+                    <span id="obs-numped" style="color: var(--text-light); font-weight: 600;"></span>
+                    
+                    <strong style="color: var(--dark-gray);">Cliente:</strong>
+                    <span id="obs-cliente" style="color: var(--text-light);"></span>
+                    
+                    <strong style="color: var(--dark-gray);">Entrega:</strong>
+                    <span id="obs-data" style="color: var(--text-light);"></span>
+                </div>
+            </div>
+            
+            <div style="background: white; padding: 20px; border-radius: 12px; border: 2px solid var(--border-light); min-height: 120px; max-height: 300px; overflow-y: auto;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light);">
+                    <i class="bi bi-file-text" style="color: var(--primary); font-size: 1.1rem;"></i>
+                    <strong style="color: var(--dark-gray); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Observação Completa</strong>
+                </div>
+                <p id="obs-texto" style="color: var(--text-light); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; margin: 0;"></p>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-primary" onclick="fecharModalObservacao()">
+                    <i class="bi bi-check-circle"></i>
+                    Fechar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -2892,6 +3181,59 @@
             document.getElementById('bulkAgendamentoModal').style.display = 'none';
         }
 
+        // Função para abrir modal de observação a partir dos atributos data-*
+        function abrirModalObservacaoFromData(element) {
+            const numped = element.getAttribute('data-numped');
+            const observacao = element.getAttribute('data-observacao');
+            const cliente = element.getAttribute('data-cliente');
+            const data = element.getAttribute('data-data');
+            
+            abrirModalObservacao(numped, observacao, cliente, data);
+        }
+
+        // Função para abrir modal de observação
+        function abrirModalObservacao(numped, observacao, cliente, data) {
+            document.getElementById('obs-numped').textContent = numped;
+            document.getElementById('obs-cliente').textContent = cliente;
+            document.getElementById('obs-data').textContent = data;
+            document.getElementById('obs-texto').textContent = observacao;
+            document.getElementById('observacaoModal').style.display = 'block';
+        }
+
+        // Função para fechar modal de observação
+        function fecharModalObservacao() {
+            document.getElementById('observacaoModal').style.display = 'none';
+        }
+
+        // Funções para edição de agendamentos
+        function abrirModalEdicao(numped, preventrega, horaini, horafim, observacao) {
+            document.getElementById('edit_numped').value = numped;
+            document.getElementById('edit_preventrega').value = preventrega;
+            document.getElementById('edit_horaini').value = horaini;
+            document.getElementById('edit_horafim').value = horafim;
+            document.getElementById('edit_observacao').value = observacao;
+            document.getElementById('editAgendamentoModal').style.display = 'block';
+        }
+
+        function fecharModalEdicao() {
+            document.getElementById('editAgendamentoModal').style.display = 'none';
+        }
+
+        function abrirModalEdicaoMassa() {
+            const checkedBoxes = document.querySelectorAll('.agendamento-checkbox:checked');
+            const numpeds = Array.from(checkedBoxes).map(cb => cb.value);
+            
+            if (numpeds.length > 0) {
+                document.getElementById('numpeds_edit_selecionados').value = numpeds.join(',');
+                document.getElementById('selectedEditCount').textContent = numpeds.length;
+                document.getElementById('bulkEditAgendamentoModal').style.display = 'block';
+            }
+        }
+
+        function fecharModalEdicaoMassa() {
+            document.getElementById('bulkEditAgendamentoModal').style.display = 'none';
+        }
+
         // Função para gerenciar checkboxes
         function updateBulkButtonState() {
             const checkedBoxes = document.querySelectorAll('.pedido-checkbox:checked');
@@ -2903,6 +3245,21 @@
                     bulkBtn.innerHTML = `<i class="bi bi-calendar-plus"></i> Agendar ${checkedBoxes.length} Selecionado(s)`;
                 } else {
                     bulkBtn.innerHTML = '<i class="bi bi-calendar-plus"></i> Agendar Selecionados';
+                }
+            }
+        }
+
+        // Função para gerenciar checkboxes de agendamentos confirmados
+        function updateBulkEditButtonState() {
+            const checkedBoxes = document.querySelectorAll('.agendamento-checkbox:checked');
+            const bulkEditBtn = document.getElementById('bulkEditBtn');
+            
+            if (bulkEditBtn) {
+                bulkEditBtn.disabled = checkedBoxes.length === 0;
+                if (checkedBoxes.length > 0) {
+                    bulkEditBtn.innerHTML = `<i class="bi bi-pencil-square"></i> Editar ${checkedBoxes.length} Selecionado(s)`;
+                } else {
+                    bulkEditBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Editar Selecionados';
                 }
             }
         }
@@ -3005,6 +3362,28 @@
                 });
             });
 
+            // Gerenciar checkboxes de agendamentos confirmados
+            const selectAllCheckboxConfirmados = document.getElementById('selectAllCheckboxConfirmados');
+            const agendamentoCheckboxes = document.querySelectorAll('.agendamento-checkbox');
+            
+            if (selectAllCheckboxConfirmados) {
+                selectAllCheckboxConfirmados.addEventListener('change', () => {
+                    agendamentoCheckboxes.forEach(checkbox => {
+                        checkbox.checked = selectAllCheckboxConfirmados.checked;
+                    });
+                    updateBulkEditButtonState();
+                });
+            }
+            
+            agendamentoCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    if (!checkbox.checked && selectAllCheckboxConfirmados) {
+                        selectAllCheckboxConfirmados.checked = false;
+                    }
+                    updateBulkEditButtonState();
+                });
+            });
+
             // Tema
             const themeToggle = document.getElementById('theme-toggle');
             if (themeToggle) {
@@ -3035,6 +3414,64 @@
 
             // Estado inicial dos checkboxes
             updateBulkButtonState();
+            updateBulkEditButtonState();
+            
+            // Event listeners para formulários de edição
+            const editAgendamentoForm = document.getElementById('editAgendamentoForm');
+            if (editAgendamentoForm) {
+                editAgendamentoForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(this);
+                    
+                    fetch('/editar-agendamento', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            mostrarNotificacao('Sucesso', data.message, 'success');
+                            fecharModalEdicao();
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            mostrarNotificacao('Erro', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro na edição de agendamento:', error);
+                        mostrarNotificacao('Erro', 'Erro de conexão ao processar edição. Verifique sua conexão e tente novamente.', 'error');
+                    });
+                });
+            }
+
+            const bulkEditAgendamentoForm = document.getElementById('bulkEditAgendamentoForm');
+            if (bulkEditAgendamentoForm) {
+                bulkEditAgendamentoForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(this);
+                    
+                    fetch('/editar-agendamento-massa', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            mostrarNotificacao('Sucesso', data.message, 'success');
+                            fecharModalEdicaoMassa();
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            mostrarNotificacao('Erro', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro na edição em massa:', error);
+                        mostrarNotificacao('Erro', 'Erro de conexão ao processar edição em massa. Verifique sua conexão e tente novamente.', 'error');
+                    });
+                });
+            }
             
             // Verificar se a aba de usuários está ativa
             const usuariosTab = document.getElementById('usuarios');

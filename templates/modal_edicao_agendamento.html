@@ -1,0 +1,96 @@
+<!-- Modal de Edição de Agendamento -->
+<div id="editAgendamentoModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="fecharModalEdicao()">&times;</span>
+        <h2 style="margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+            <i class="bi bi-pencil-square" style="color: var(--success);"></i>
+            Editar Agendamento
+        </h2>
+        <form id="editAgendamentoForm">
+            <input type="hidden" id="edit_numped" name="numped">
+            
+            <div class="form-group">
+                <label class="form-label">Data de Entrega:</label>
+                <input type="date" class="form-input" id="edit_preventrega" name="preventrega" required>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label">Horário Início:</label>
+                    <input type="time" class="form-input" id="edit_horaini" name="horaini" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Horário Fim:</label>
+                    <input type="time" class="form-input" id="edit_horafim" name="horafim" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Observação:</label>
+                <textarea class="form-input" id="edit_observacao" name="observacao" rows="3" 
+                          placeholder="Observações adicionais (opcional)"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalEdicao()">
+                    <i class="bi bi-x-circle"></i>
+                    Cancelar
+                </button>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i>
+                    Salvar Alterações
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de Edição em Massa de Agendamentos -->
+<div id="bulkEditAgendamentoModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="fecharModalEdicaoMassa()">&times;</span>
+        <h2 style="margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+            <i class="bi bi-pencil-square" style="color: var(--success);"></i>
+            Editar Múltiplos Agendamentos
+        </h2>
+        <p style="margin-bottom: 24px; color: var(--dark-gray);">
+            A data e hora abaixo serão aplicadas a <strong id="selectedEditCount">0</strong> agendamento(s) selecionado(s).
+        </p>
+        <form id="bulkEditAgendamentoForm">
+            <input type="hidden" id="numpeds_edit_selecionados" name="numpeds_selecionados">
+            
+            <div class="form-group">
+                <label class="form-label">Data de Entrega:</label>
+                <input type="date" class="form-input" name="preventrega" required>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label">Horário Início:</label>
+                    <input type="time" class="form-input" name="horaini" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Horário Fim:</label>
+                    <input type="time" class="form-input" name="horafim" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Observação:</label>
+                <textarea class="form-input" name="observacao" rows="3" 
+                          placeholder="Observações adicionais (opcional)"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalEdicaoMassa()">
+                    <i class="bi bi-x-circle"></i>
+                    Cancelar
+                </button>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i>
+                    Salvar Todos
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

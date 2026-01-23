@@ -241,7 +241,7 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
         # Query principal para buscar pedidos
         # OTIMIZADO: Usando LEFT JOIN em vez de NOT EXISTS para melhor performance
         sql_pedidos = """
-            SELECT p.NUMPED, c.CLIENTE, p.DATA, p.NUMNOTA, p.NUMCAR
+            SELECT p.NUMPEDRCA, p.NUMPED, c.CLIENTE, p.DATA, p.NUMNOTA, p.NUMCAR
             FROM PCPEDC p
             INNER JOIN PCCLIENT c ON p.CODCLI = c.CODCLI 
             LEFT JOIN DSLTI_PEDAGEND a ON a.NUMPED = p.NUMPED
@@ -393,7 +393,7 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
                 FROM FUSIONT.FUSIONTRAK_INT_EVENTOS e
             )
             SELECT
-                a.NUMPED, c.CLIENTE, p.DATA, p.NUMNOTA, p.NUMCAR,
+                p.NUMPEDRCA, a.NUMPED, c.CLIENTE, p.DATA, p.NUMNOTA, p.NUMCAR,
                 a.PREVENTREGA, a.OBSERVACAO,
                 TO_CHAR(a.HORAINI, 'HH24:MI') || 'h' AS HORAINI,
                 TO_CHAR(a.HORAFIM, 'HH24:MI') || 'h' AS HORAFIM,

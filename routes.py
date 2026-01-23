@@ -10,7 +10,8 @@ from auth import (
 from database import (
     get_pedidos_pendentes, get_usuarios, get_usuario_by_id,
     get_agendamentos_confirmados, atualizar_agendamento,
-    atualizar_telefone_usuario, get_stats_data
+    atualizar_telefone_usuario, get_stats_data,
+    get_connection, release_connection, get_app_user_name
 )
 from charts import generate_all_charts
 from rate_limit_config import RATE_LIMITS
@@ -831,6 +832,142 @@ def atualizar_massa():
         }), 500
 
 # Rota /usuarios removida - funcionalidade integrada no painel principal
+
+@main_routes.route('/editar-agendamento', methods=['POST'])
+@login_required
+@permission_required('usuarios')
+def editar_agendamento_route():
+    """Edita um agendamento individual - apenas para usuários administrativos"""
+    try:
+        # Verifica se os dados vêm como JSON ou FormData
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
+        
+        numped = data.get('numped')
+        preventrega = data.get('preventrega')
+        horaini = data.get('horaini')
+        horafim = data.get('horafim')
+        observacao = data.get('observacao', '')
+        
+        # Validações básicas
+        if not all([numped, preventrega, horaini, horafim]):
+            return jsonify({
+                'success': False,
+                'message': 'Todos os campos obrigatórios devem ser preenchidos'
+            }), 400
+        
+        # Converte data para formato datetime
+        try:
+            preventrega_obj = datetime.strptime(preventrega, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'message': 'Formato de data inválido'
+            }), 400
+        
+        # Importar função de edição
+        from database_edit_agendamento import editar_agendamento
+        
+        # Editar no banco
+        result = editar_agendamento(
+            numped, preventrega, horaini, horafim, observacao,
+            get_connection, release_connection, get_app_user_name
+        )
+        
+        if result.get('status') == 'success':
+            return jsonify({
+                'success': True,
+                'message': result.get('message', 'Agendamento editado com sucesso!')
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': result.get('message', 'Erro ao editar agendamento')
+            }), 400
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro interno: {str(e)}'
+        }), 500
+
+@main_routes.route('/editar-agendamento-massa', methods=['POST'])
+@login_required
+@permission_required('usuarios')
+def editar_agendamento_massa_route():
+    """Edita múltiplos agendamentos - apenas para usuários administrativos"""
+    try:
+        # Verifica se os dados vêm como JSON ou FormData
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
+        
+        # Pega os números dos pedidos selecionados
+        numpeds_selecionados = data.get('numpeds_selecionados')
+        preventrega = data.get('preventrega')
+        horaini = data.get('horaini')
+        horafim = data.get('horafim')
+        observacao = data.get('observacao', '')
+        
+        # Validação dos campos obrigatórios
+        if not all([numpeds_selecionados, preventrega, horaini, horafim]):
+            return jsonify({
+                'success': False,
+                'message': 'Todos os campos obrigatórios devem ser preenchidos'
+            }), 400
+        
+        # Converte a string de números em lista
+        try:
+            numped_list = [int(n.strip()) for n in numpeds_selecionados.split(',') if n.strip()]
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'message': 'Números de pedidos inválidos'
+            }), 400
+        
+        if not numped_list:
+            return jsonify({
+                'success': False,
+                'message': 'Nenhum agendamento selecionado'
+            }), 400
+        
+        # Converte data
+        try:
+            data_entrega_obj = datetime.strptime(preventrega, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'message': 'Data inválida'
+            }), 400
+        
+        # Importar função de edição em massa
+        from database_edit_agendamento import editar_agendamento_massa
+        
+        # Editar no banco
+        result = editar_agendamento_massa(
+            numped_list, preventrega, horaini, horafim, observacao,
+            get_connection, release_connection, get_app_user_name
+        )
+        
+        if result.get('status') == 'success':
+            return jsonify({
+                'success': True,
+                'message': result.get('message', 'Agendamentos editados com sucesso!')
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': result.get('message', 'Erro ao editar agendamentos')
+            }), 400
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro interno: {str(e)}'
+        }), 500
 
 @main_routes.route('/api/usuarios')
 @login_required
