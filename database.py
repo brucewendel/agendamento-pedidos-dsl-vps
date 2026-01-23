@@ -3,9 +3,56 @@ from datetime import datetime, date
 import json
 import redis
 from flask import session
+from contextlib import contextmanager
+from functools import wraps
 from config import DB_USER, DB_PASSWORD, DB_DSN, REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
 
 # Usando cx_Oracle para melhor compatibilidade com Oracle Database
+
+# ============================================
+# CONNECTION POOL ORACLE - OTIMIZAÇÃO PERFORMANCE
+# ============================================
+pool = None
+
+def init_pool():
+    """Inicializa o pool de conexões Oracle"""
+    global pool
+    if pool is None:
+        try:
+            pool = cx_Oracle.SessionPool(
+                user=DB_USER,
+                password=DB_PASSWORD,
+                dsn=DB_DSN,
+                min=2,              # Mínimo de conexões no pool
+                max=10,             # Máximo de conexões no pool
+                increment=1,        # Incremento quando precisa mais conexões
+                threaded=True,      # Suporte a múltiplas threads
+                getmode=cx_Oracle.SPOOL_ATTRVAL_WAIT,  # Aguarda se não houver conexão disponível
+                encoding="UTF-8"
+            )
+            print("✅ Pool de conexões Oracle inicializado com sucesso!")
+        except Exception as e:
+            print(f"❌ Erro ao criar pool Oracle: {e}")
+            pool = None
+    return pool
+
+def release_connection(connection):
+    """Devolve conexão ao pool"""
+    global pool
+    if pool and connection:
+        try:
+            pool.release(connection)
+        except Exception as e:
+            print(f"Aviso: Erro ao devolver conexão ao pool: {e}")
+
+@contextmanager
+def get_db_connection(app_user=None):
+    """Context manager para conexão com auto-release ao pool"""
+    connection = get_connection(app_user)
+    try:
+        yield connection
+    finally:
+        release_connection(connection)
 
 # Inicializa o cliente Redis
 try:
@@ -29,7 +76,9 @@ class CustomJsonEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 def cache_data(key_prefix, ex=300): # ex é o tempo de expiração em segundos (5 minutos)
+    """Decorator para cache Redis com suporte a functools.wraps"""
     def decorator(func):
+        @wraps(func)
         def wrapper(*args, **kwargs):
             if redis_client:
                 # Gera uma chave de cache baseada no nome da função e seus argumentos
@@ -56,17 +105,27 @@ def cache_data(key_prefix, ex=300): # ex é o tempo de expiração em segundos (
     return decorator
 
 def get_connection(app_user=None):
-    """Obtém uma conexão com o banco de dados Oracle
+    """Obtém uma conexão do pool de conexões Oracle
     
     Args:
         app_user: Nome do usuário da aplicação (PCEMPR ou RCA) para auditoria
     """
+    global pool
     try:
-        connection = cx_Oracle.connect(
-            user=DB_USER,
-            password=DB_PASSWORD,
-            dsn=DB_DSN
-        )
+        # Inicializa o pool se ainda não existe
+        if pool is None:
+            init_pool()
+        
+        # Obtém conexão do pool (se pool existe) ou cria conexão direta (fallback)
+        if pool:
+            connection = pool.acquire()
+        else:
+            # Fallback: conexão direta se pool falhar
+            connection = cx_Oracle.connect(
+                user=DB_USER,
+                password=DB_PASSWORD,
+                dsn=DB_DSN
+            )
         
         # Definir CLIENT_IDENTIFIER para auditoria (se usuário fornecido)
         if app_user and connection:
@@ -109,7 +168,7 @@ def get_app_user_name():
                     )
                     result = cursor.fetchone()
                     cursor.close()
-                    connection.close()
+                    release_connection(connection)
                     
                     if result and result[0]:
                         return result[0]
@@ -117,7 +176,7 @@ def get_app_user_name():
                         # Se não encontrar NOME_GUERRA, retorna o username
                         return session['username']
                 except:
-                    connection.close()
+                    release_connection(connection)
                     return session['username']
         
         return None
@@ -152,7 +211,7 @@ def execute_query(query, params=None, fetch_one=False, fetch_all=True):
         return None
     finally:
         cursor.close()
-        connection.close()
+        release_connection(connection)
 
 def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None, offset=0, per_page=25):
     """Obtém pedidos da PCPEDC que ainda não foram agendados (não existem na DSLTI_PEDAGEND)"""
@@ -167,32 +226,28 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
         cursor = connection.cursor()
         
         # Query para contar total de registros
-        # Busca pedidos da PCPEDC que NÃO existem na DSLTI_PEDAGEND
+        # OTIMIZADO: Usando LEFT JOIN em vez de NOT EXISTS para melhor performance
         sql_count = """
             SELECT COUNT(*) 
             FROM PCPEDC p
             INNER JOIN PCCLIENT c ON p.CODCLI = c.CODCLI 
-            WHERE NOT EXISTS (
-                SELECT 1 FROM DSLTI_PEDAGEND a 
-                WHERE a.NUMPED = p.NUMPED
-            )
+            LEFT JOIN DSLTI_PEDAGEND a ON a.NUMPED = p.NUMPED
+            WHERE a.NUMPED IS NULL
             AND p.CODSUPERVISOR NOT IN (9130)
-            AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
+            AND p.DATA >= DATE '2026-01-01'
         """
         params_count = {}
         
         # Query principal para buscar pedidos
-        # Busca pedidos da PCPEDC que NÃO existem na DSLTI_PEDAGEND
+        # OTIMIZADO: Usando LEFT JOIN em vez de NOT EXISTS para melhor performance
         sql_pedidos = """
             SELECT p.NUMPED, c.CLIENTE, p.DATA, p.NUMNOTA, p.NUMCAR
             FROM PCPEDC p
             INNER JOIN PCCLIENT c ON p.CODCLI = c.CODCLI 
-            WHERE NOT EXISTS (
-                SELECT 1 FROM DSLTI_PEDAGEND a 
-                WHERE a.NUMPED = p.NUMPED
-            )
+            LEFT JOIN DSLTI_PEDAGEND a ON a.NUMPED = p.NUMPED
+            WHERE a.NUMPED IS NULL
             AND p.CODSUPERVISOR NOT IN (9130)
-            AND p.DATA >= TO_DATE('01/01/2026', 'DD/MM/YYYY')
+            AND p.DATA >= DATE '2026-01-01'
         """
         params_pedidos = {}
         
@@ -244,7 +299,7 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
         return [], 0
     finally:
         if connection:
-            connection.close()
+            release_connection(connection)
 
 def get_usuarios(filtro_rca=None, filtro_supervisor=None):
     """Obtém lista de usuários/RCAs do banco de dados com filtros opcionais"""
@@ -288,7 +343,7 @@ def get_usuarios(filtro_rca=None, filtro_supervisor=None):
         return []
     finally:
         if connection:
-            connection.close()
+            release_connection(connection)
 
 def get_usuario_by_id(codusur):
     """Obtém um usuário específico pelo código"""
@@ -403,7 +458,7 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
         return [], 0
     finally:
         if connection:
-            connection.close()
+            release_connection(connection)
 
 def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observacao):
     """Insere um novo agendamento na tabela DSLTI_PEDAGEND com validações de data"""
@@ -481,7 +536,7 @@ def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, obs
         return {'status': 'error', 'message': f'Erro interno: {str(e)}'}
     finally:
         if connection:
-            connection.close()
+            release_connection(connection)
 
 def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, horafim_str, observacao):
     """Insere múltiplos agendamentos na tabela DSLTI_PEDAGEND com validações de data"""
@@ -577,7 +632,7 @@ def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, hora
         return {'status': 'error', 'message': f'Erro: {str(e)}'}
     finally:
         if connection:
-            connection.close()
+            release_connection(connection)
 
 def atualizar_telefone_usuario(codusur, telefone):
     """Atualiza o telefone de um usuário no banco de dados"""
@@ -734,8 +789,9 @@ def calcular_kpis_avancados():
         }
     finally:
         if connection:
-            connection.close()
+            release_connection(connection)
 
+@cache_data("graficos_data", ex=300)  # Cache por 5 minutos
 def get_graficos_data(codigo_rca=None):
     """Obtém dados para gráficos do dashboard usando DSLTI_PEDAGEND"""
     connection = get_connection()
@@ -927,7 +983,7 @@ def get_graficos_data(codigo_rca=None):
         }
     finally:
         if connection:
-            connection.close()
+            release_connection(connection)
 
 def gerar_grafico_tendencia():
     """Gera dados para gráfico de tendência de agendamentos"""
@@ -1027,8 +1083,9 @@ def gerar_grafico_tendencia():
         }
     finally:
         if connection:
-            connection.close()
+            release_connection(connection)
 
+@cache_data("stats_data", ex=120)  # Cache por 2 minutos (dados mais voláteis)
 def get_stats_data(codigo_rca=None):
     """Obtém dados de estatísticas para o painel usando DSLTI_PEDAGEND"""
     # Filtro por RCA se fornecido
@@ -1047,22 +1104,6 @@ def get_stats_data(codigo_rca=None):
         'agendados_hoje': hoje_result[0] if hoje_result else 0,
         'agendados_7_dias': proximos_result[0] if proximos_result else 0
     }
-
-from functools import wraps
-from flask import g
-
-def cache_data(key_prefix, ex):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            key = f"{key_prefix}:{args[0]}"
-            result = g.cache.get(key)
-            if result is None:
-                result = func(*args, **kwargs)
-                g.cache.set(key, result, ex)
-            return result
-        return wrapper
-    return decorator
 
 def get_usuario_pcempr_by_name(nome):
     """
