@@ -1,4 +1,4 @@
-import cx_Oracle
+import oracledb as cx_Oracle
 from datetime import datetime, date
 import json
 import redis
@@ -7,7 +7,13 @@ from contextlib import contextmanager
 from functools import wraps
 from config import DB_USER, DB_PASSWORD, DB_DSN, REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
 
-# Usando cx_Oracle para melhor compatibilidade com Oracle Database
+# Usando oracledb (compatível com cx_Oracle) para Oracle Database
+# Modo thick necessário para suportar password verifier do Oracle DB
+try:
+    cx_Oracle.init_oracle_client(lib_dir=r"C:\Program Files\Oracle Client for Microsoft Tools")
+    print("✅ oracledb inicializado em modo THICK com Oracle Client")
+except Exception as e:
+    print(f"⚠️ Aviso ao inicializar modo thick: {e}")
 
 # ============================================
 # CONNECTION POOL ORACLE - OTIMIZAÇÃO PERFORMANCE

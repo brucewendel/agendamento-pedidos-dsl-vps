@@ -10,7 +10,7 @@ from config import (
     USUARIOS, TOKENS_WHATSAPP, LOGS_AUTH_RCA,
     API_URL, API_TOKEN, NUMERO_ADMIN
 )
-from database import get_usuario_by_id, get_usuario_pcempr_by_name, authenticate_pcempr_user
+from database import get_usuario_by_id, get_usuario_pcempr_by_name, authenticate_pcempr_user, redis_client
 
 def login_required(f):
     """Decorator para verificar se o usuário está logado"""
@@ -145,23 +145,33 @@ def create_whatsapp_token(codusur, telefone, nome):
     # Garantir que codusur seja inteiro
     codusur = int(codusur)
     
-    TOKENS_WHATSAPP[codusur] = {
+    token_data = {
         'token': token,
         'timestamp': timestamp,
         'telefone': telefone,
         'nome': nome
     }
     
-    print(f"[DEBUG create_whatsapp_token] Token '{token}' criado para codusur={codusur} (tipo: {type(codusur)})")
-    print(f"[DEBUG create_whatsapp_token] TOKENS_WHATSAPP agora contém: {list(TOKENS_WHATSAPP.keys())}")
+    # Armazenar em Redis (preferencial) ou memória (fallback)
+    if redis_client:
+        try:
+            redis_key = f"rca_token:{codusur}"
+            redis_client.setex(redis_key, 300, json.dumps(token_data))  # Expira em 5 minutos
+            print(f"[DEBUG create_whatsapp_token] Token '{token}' armazenado no Redis para codusur={codusur}")
+        except Exception as e:
+            print(f"[WARN] Erro ao armazenar token no Redis: {e}. Usando memória.")
+            TOKENS_WHATSAPP[codusur] = token_data
+    else:
+        TOKENS_WHATSAPP[codusur] = token_data
+        print(f"[DEBUG create_whatsapp_token] Token '{token}' armazenado em memória para codusur={codusur}")
     
     return token
 
 def validate_whatsapp_token(codusur, token):
     """Valida um token WhatsApp para RCA"""
     print(f"[DEBUG validate_whatsapp_token] Validando token para codusur={codusur} (tipo: {type(codusur)})")
-    print(f"[DEBUG validate_whatsapp_token] Token recebido: '{token}' (tipo: {type(token)})")
-    print(f"[DEBUG validate_whatsapp_token] Tokens armazenados: {list(TOKENS_WHATSAPP.keys())}")
+    print(f"[DEBUG validate_whatsapp_token] Token recebido RAW: '{token}' (tipo: {type(token)})")
+    print(f"[DEBUG validate_whatsapp_token] Token recebido repr: {repr(token)}")
     
     # Garantir que codusur seja inteiro para comparação
     try:
@@ -171,11 +181,30 @@ def validate_whatsapp_token(codusur, token):
         print(f"[DEBUG validate_whatsapp_token] ERRO ao converter codusur para int")
         return False, None
     
-    if codusur not in TOKENS_WHATSAPP:
-        print(f"[DEBUG validate_whatsapp_token] codusur {codusur} NÃO encontrado em TOKENS_WHATSAPP")
+    # Buscar token no Redis primeiro, depois na memória
+    stored_data = None
+    
+    if redis_client:
+        try:
+            redis_key = f"rca_token:{codusur}"
+            redis_value = redis_client.get(redis_key)
+            if redis_value:
+                stored_data = json.loads(redis_value)
+                print(f"[DEBUG validate_whatsapp_token] Token encontrado no Redis")
+            else:
+                print(f"[DEBUG validate_whatsapp_token] Token NÃO encontrado no Redis")
+        except Exception as e:
+            print(f"[WARN] Erro ao buscar token no Redis: {e}")
+    
+    # Fallback para memória se não encontrou no Redis
+    if not stored_data and codusur in TOKENS_WHATSAPP:
+        stored_data = TOKENS_WHATSAPP[codusur]
+        print(f"[DEBUG validate_whatsapp_token] Token encontrado na memória")
+    
+    if not stored_data:
+        print(f"[DEBUG validate_whatsapp_token] codusur {codusur} NÃO encontrado")
         return False, None
     
-    stored_data = TOKENS_WHATSAPP[codusur]
     print(f"[DEBUG validate_whatsapp_token] Dados armazenados: {stored_data}")
     print(f"[DEBUG validate_whatsapp_token] Token armazenado: '{stored_data['token']}' (tipo: {type(stored_data['token'])})")
     
@@ -183,25 +212,48 @@ def validate_whatsapp_token(codusur, token):
     time_diff = current_time - stored_data['timestamp']
     print(f"[DEBUG validate_whatsapp_token] Diferença de tempo: {time_diff:.2f} segundos")
     
-    # Token expira em 5 minutos (300 segundos)
+    # Token expira em 5 minutos (300 segundos) - verificação adicional
     if time_diff > 300:
         print(f"[DEBUG validate_whatsapp_token] Token EXPIRADO (>{time_diff:.2f}s > 300s)")
-        del TOKENS_WHATSAPP[codusur]
+        # Remover do Redis e memória
+        if redis_client:
+            try:
+                redis_client.delete(f"rca_token:{codusur}")
+            except:
+                pass
+        if codusur in TOKENS_WHATSAPP:
+            del TOKENS_WHATSAPP[codusur]
         return False, None
     
-    # Comparar tokens removendo espaços em branco e convertendo para string
-    token_armazenado = str(stored_data['token']).strip()
-    token_recebido = str(token).strip()
+    # Limpar e normalizar tokens - remover TODOS os espaços e caracteres não numéricos
+    token_armazenado = ''.join(filter(str.isdigit, str(stored_data['token'])))
+    token_recebido = ''.join(filter(str.isdigit, str(token)))
+    
+    print(f"[DEBUG validate_whatsapp_token] Token armazenado LIMPO: '{token_armazenado}' (len={len(token_armazenado)})")
+    print(f"[DEBUG validate_whatsapp_token] Token recebido LIMPO: '{token_recebido}' (len={len(token_recebido)})")
     print(f"[DEBUG validate_whatsapp_token] Comparando: '{token_armazenado}' == '{token_recebido}'")
     
     if token_armazenado == token_recebido:
-        print(f"[DEBUG validate_whatsapp_token] Tokens CORRESPONDEM! Login bem-sucedido.")
+        print(f"[DEBUG validate_whatsapp_token] ✅ Tokens CORRESPONDEM! Login bem-sucedido.")
         nome = stored_data['nome']
         telefone = stored_data['telefone']
-        del TOKENS_WHATSAPP[codusur]  # Remove o token após uso
+        
+        # Remover token do Redis e memória após uso
+        if redis_client:
+            try:
+                redis_client.delete(f"rca_token:{codusur}")
+            except:
+                pass
+        if codusur in TOKENS_WHATSAPP:
+            del TOKENS_WHATSAPP[codusur]
+        
         return True, {'nome': nome, 'telefone': telefone}
     
-    print(f"[DEBUG validate_whatsapp_token] Tokens NÃO correspondem!")
+    print(f"[DEBUG validate_whatsapp_token] ❌ Tokens NÃO correspondem!")
+    print(f"[DEBUG validate_whatsapp_token] Diferença char por char:")
+    for i, (c1, c2) in enumerate(zip(token_armazenado, token_recebido)):
+        if c1 != c2:
+            print(f"[DEBUG validate_whatsapp_token]   Posição {i}: '{c1}' != '{c2}'")
     return False, None
 
 def log_rca_auth_attempt(codusur, nome, telefone, success, details=""):
