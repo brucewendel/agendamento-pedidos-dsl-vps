@@ -297,19 +297,29 @@ def cleanup_expired_tokens():
         del TOKENS_WHATSAPP[codusur]
 
 def format_phone_number(phone):
-    """Formata número de telefone para padrão brasileiro"""
+    """Formata número de telefone para padrão brasileiro com código do país"""
     if not phone:
         return phone
     
-    # Remove caracteres não numéricos
+    # Remove TODOS os caracteres não numéricos (parênteses, espaços, hífens, etc)
     clean_phone = ''.join(filter(str.isdigit, phone))
     
-    # Adiciona código do país se necessário
-    if len(clean_phone) == 11 and clean_phone.startswith('11'):
+    # Adiciona código do país 55 se necessário
+    # Formato esperado: 5585999999999 (13 dígitos)
+    if len(clean_phone) == 11:
+        # Número com DDD + 9 dígitos (celular) - adiciona código do país
         clean_phone = '55' + clean_phone
     elif len(clean_phone) == 10:
-        clean_phone = '5511' + clean_phone
+        # Número com DDD + 8 dígitos (fixo) - adiciona código do país
+        clean_phone = '55' + clean_phone
+    elif len(clean_phone) == 13 and clean_phone.startswith('55'):
+        # Já tem código do país - mantém como está
+        pass
+    elif len(clean_phone) < 10:
+        # Número muito curto - retorna como está para validação falhar
+        pass
     
+    print(f"[DEBUG format_phone_number] Entrada: '{phone}' -> Saída: '{clean_phone}'")
     return clean_phone
 
 def validate_phone_number(phone):
