@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dsl-agendamento-v1.0.0';
+const CACHE_NAME = 'dsl-agendamento-v1.0.1';
 const OFFLINE_URL = '/offline';
 
 const PRECACHE_ASSETS = [
