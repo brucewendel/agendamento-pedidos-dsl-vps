@@ -44,8 +44,16 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    // Ignorar requisições que não sejam GET
     if (event.request.method !== 'GET') return;
 
+    // Ignorar requisições que não sejam HTTP/HTTPS (chrome-extension, etc)
+    const url = new URL(event.request.url);
+    if (!url.protocol.startsWith('http')) {
+        return;
+    }
+
+    // Ignorar requisições de API - sempre buscar do servidor
     if (event.request.url.includes('/api/')) {
         event.respondWith(
             fetch(event.request).catch(() => {
@@ -60,13 +68,17 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Cache-first strategy para recursos estáticos
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                const responseToCache = response.clone();
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, responseToCache);
-                });
+                // Só cachear respostas válidas
+                if (response && response.status === 200 && response.type === 'basic') {
+                    const responseToCache = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseToCache);
+                    });
+                }
                 return response;
             })
             .catch(() => {

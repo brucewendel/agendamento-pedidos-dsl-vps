@@ -277,6 +277,7 @@ function loginForm() {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json'
                     },
+                    credentials: 'include',  // Envia cookies (sessão + CSRF)
                     body: formData
                 });
                 
