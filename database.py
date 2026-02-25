@@ -9,11 +9,29 @@ from config import DB_USER, DB_PASSWORD, DB_DSN, REDIS_HOST, REDIS_PORT, REDIS_D
 
 # Usando oracledb (compatível com cx_Oracle) para Oracle Database
 # Modo thick necessário para suportar password verifier do Oracle DB
+import os
+import platform
+
+# Detectar ambiente e definir caminho do Oracle Client
+if platform.system() == 'Windows':
+    # Desenvolvimento local Windows
+    oracle_client_path = r"C:\Program Files\Oracle Client for Microsoft Tools"
+else:
+    # Produção Docker Linux
+    oracle_client_path = "/opt/oracle"
+
 try:
-    cx_Oracle.init_oracle_client(lib_dir=r"C:\Program Files\Oracle Client for Microsoft Tools")
-    print("✅ oracledb inicializado em modo THICK com Oracle Client")
+    if os.path.exists(oracle_client_path):
+        cx_Oracle.init_oracle_client(lib_dir=oracle_client_path)
+        print(f"✅ oracledb inicializado em modo THICK com Oracle Client: {oracle_client_path}")
+    else:
+        print(f"⚠️ Oracle Client não encontrado em: {oracle_client_path}")
+        print("⚠️ Tentando inicializar sem especificar lib_dir...")
+        cx_Oracle.init_oracle_client()
+        print("✅ oracledb inicializado em modo THICK (lib_dir automático)")
 except Exception as e:
-    print(f"⚠️ Aviso ao inicializar modo thick: {e}")
+    print(f"❌ ERRO ao inicializar modo thick: {e}")
+    print("⚠️ Continuando em THIN mode (pode causar erro DPY-3015)")
 
 # ============================================
 # CONNECTION POOL ORACLE - OTIMIZAÇÃO PERFORMANCE
