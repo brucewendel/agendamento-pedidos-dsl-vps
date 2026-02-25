@@ -42,5 +42,9 @@ COPY static/ ./static/
 COPY .env .
 
 # Comando para iniciar a aplicação usando Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:6000", "--workers", "4", "app:app"]
+# --access-logfile - : logs de acesso no stdout
+# --error-logfile - : logs de erro no stdout
+# --log-level info : nível de log detalhado
+# --capture-output : captura print() do Python
+CMD ["gunicorn", "--bind", "0.0.0.0:6000", "--workers", "4", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "--capture-output", "app:app"]
 

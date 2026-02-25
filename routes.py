@@ -89,6 +89,15 @@ def index():
 def login_modern():
     """Página de login modernizada com PWA"""
     if request.method == 'POST':
+        # LOG: Início da requisição de login
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        print(f"\n{'='*80}")
+        print(f"[LOGIN] Nova tentativa de login")
+        print(f"[LOGIN] IP: {client_ip}")
+        print(f"[LOGIN] User-Agent: {request.headers.get('User-Agent', 'N/A')}")
+        print(f"[LOGIN] Content-Type: {request.content_type}")
+        print(f"[LOGIN] Headers: X-Requested-With={request.headers.get('X-Requested-With')}")
+        
         # Detectar se é requisição AJAX/fetch (verifica headers)
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
                   request.accept_mimetypes.accept_json and \
@@ -99,9 +108,11 @@ def login_modern():
             data = request.get_json()
             username = data.get('username')
             password = data.get('password')
+            print(f"[LOGIN] Formato: JSON")
         else:
             username = request.form.get('username')
             password = request.form.get('password')
+            print(f"[LOGIN] Formato: FormData")
             
             # Limpar espaços em branco
             if username:
@@ -109,8 +120,17 @@ def login_modern():
             if password:
                 password = password.strip()
         
+        # LOG: Dados recebidos (sem mostrar senha)
+        print(f"[LOGIN] Username: {username}")
+        print(f"[LOGIN] Password: {'*' * len(password) if password else 'VAZIO'}")
+        print(f"[LOGIN] CSRF Token presente: {'csrf_token' in request.form or 'csrf_token' in (request.get_json() or {})}")
+        
         auth_result, user_type = authenticate_user_extended(username, password)
+        
         if auth_result:
+            # LOG: Login bem-sucedido
+            print(f"[LOGIN] ✅ SUCESSO - Usuário: {username} | Tipo: {user_type}")
+            
             session['username'] = username
             session['user_type'] = user_type
             
@@ -124,6 +144,9 @@ def login_modern():
                 }
                 session['permissions'] = ['dashboard', 'painel', 'relatorio', 'usuarios']
             
+            print(f"[LOGIN] Sessão criada com sucesso")
+            print(f"{'='*80}\n")
+            
             # Se for requisição AJAX/JSON, retorna JSON
             if request.is_json or is_ajax:
                 return jsonify({
@@ -134,6 +157,10 @@ def login_modern():
                 # Se for form-data tradicional, redireciona diretamente
                 return redirect(url_for('main.painel'))
         else:
+            # LOG: Erro de autenticação
+            print(f"[LOGIN] ❌ FALHA - Usuário: {username} | Credenciais inválidas")
+            print(f"{'='*80}\n")
+            
             # Erro de autenticação
             if request.is_json or is_ajax:
                 return jsonify({
