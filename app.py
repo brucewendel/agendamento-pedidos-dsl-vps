@@ -2,12 +2,37 @@ from flask import Flask, send_from_directory
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 from config import FLASK_SECRET_KEY, FLASK_HOST, FLASK_PORT, FLASK_DEBUG, REDIS_HOST, REDIS_PORT, REDIS_DB
 import os
 
 # Cria a aplicação Flask
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = FLASK_SECRET_KEY
+
+# Configura ProxyFix para suportar proxy reverso (Nginx/OpenResty)
+# Isso permite que o Flask reconheça corretamente os headers X-Forwarded-*
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_for=1,      # Número de proxies que definem X-Forwarded-For
+    x_proto=1,    # Número de proxies que definem X-Forwarded-Proto (HTTP/HTTPS)
+    x_host=1,     # Número de proxies que definem X-Forwarded-Host
+    x_prefix=1    # Número de proxies que definem X-Forwarded-Prefix
+)
+
+# Configurações para suportar proxy reverso (Nginx/OpenResty)
+app.config['SESSION_COOKIE_SECURE'] = False  # Permite cookies mesmo sem HTTPS direto (proxy reverso)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_DOMAIN'] = None  # Permite cookies no mesmo domínio
+app.config['REMEMBER_COOKIE_SECURE'] = False
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+
+# Configurações CSRF
+app.config['WTF_CSRF_ENABLED'] = True
+app.config['WTF_CSRF_TIME_LIMIT'] = None  # Token não expira
+app.config['WTF_CSRF_SSL_STRICT'] = False  # Não força HTTPS (proxy reverso já gerencia)
+app.config['WTF_CSRF_CHECK_DEFAULT'] = True
 
 # Ativa proteção CSRF
 csrf = CSRFProtect(app)
