@@ -33,6 +33,8 @@ app.config['WTF_CSRF_ENABLED'] = True
 app.config['WTF_CSRF_TIME_LIMIT'] = None  # Token não expira
 app.config['WTF_CSRF_SSL_STRICT'] = False  # Não força HTTPS (proxy reverso já gerencia)
 app.config['WTF_CSRF_CHECK_DEFAULT'] = True
+app.config['WTF_CSRF_METHODS'] = ['POST', 'PUT', 'PATCH', 'DELETE']  # Métodos que requerem CSRF
+app.config['SESSION_COOKIE_NAME'] = 'dsl_session'  # Nome customizado para evitar conflitos
 
 # Ativa proteção CSRF
 csrf = CSRFProtect(app)

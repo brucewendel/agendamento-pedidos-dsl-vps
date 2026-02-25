@@ -267,10 +267,21 @@ function loginForm() {
                 formData.append('username', this.username.trim());
                 formData.append('password', this.password.trim());
                 
-                // Adicionar token CSRF
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                formData.append('csrf_token', csrfToken);
+                // Adicionar token CSRF (com verificação)
+                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                if (csrfMeta) {
+                    const csrfToken = csrfMeta.getAttribute('content');
+                    if (csrfToken) {
+                        formData.append('csrf_token', csrfToken);
+                        console.log('✅ CSRF token adicionado ao FormData');
+                    } else {
+                        console.warn('⚠️ Meta tag csrf-token existe mas está vazia');
+                    }
+                } else {
+                    console.error('❌ Meta tag csrf-token não encontrada no HTML');
+                }
                 
+                console.log('📤 Enviando requisição para /login-modern...');
                 const response = await fetch('/login-modern', {
                     method: 'POST',
                     headers: {
@@ -280,6 +291,8 @@ function loginForm() {
                     credentials: 'include',  // Envia cookies (sessão + CSRF)
                     body: formData
                 });
+                
+                console.log(`📥 Resposta recebida: ${response.status} ${response.statusText}`);
                 
                 if (response.ok) {
                     // Salvar credenciais se "lembrar-me" estiver marcado
