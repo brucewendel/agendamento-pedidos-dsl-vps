@@ -1,3 +1,4 @@
+# teste de commit
 # Use uma imagem base oficial e estável do Python
 FROM python:3.10-slim-bullseye
 
