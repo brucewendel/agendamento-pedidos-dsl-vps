@@ -3506,36 +3506,73 @@
     <script>
         // Variável global para armazenar o evento de instalação
         let deferredPrompt = null;
-        const installBtn = document.getElementById('installPwaBtn');
+        let installButton = null;
+        
+        // Criar e mostrar botão de instalação flutuante
+        function showInstallButton() {
+            // Verificar se já existe
+            if (document.getElementById('pwa-install-button')) return;
+            
+            // Criar botão flutuante
+            installButton = document.createElement('button');
+            installButton.id = 'pwa-install-button';
+            installButton.innerHTML = `
+                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span>Instalar App</span>
+            `;
+            installButton.className = 'fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg flex items-center gap-2 transition-all duration-300 hover:scale-105 z-50 animate-bounce';
+            
+            // Adicionar evento de clique
+            installButton.addEventListener('click', instalarPWA);
+            
+            // Adicionar ao body
+            document.body.appendChild(installButton);
+            console.log('✅ Botão de instalação exibido');
+        }
+        
+        // Esconder botão de instalação
+        function hideInstallButton() {
+            const btn = document.getElementById('pwa-install-button');
+            if (btn) {
+                btn.remove();
+                console.log('🗑️ Botão de instalação removido');
+            }
+        }
         
         // Função para instalar PWA
         async function instalarPWA() {
             if (!deferredPrompt) {
+                console.log('⚠️ Prompt de instalação não disponível');
                 Swal.fire({
                     icon: 'info',
                     title: 'App já instalado ou não disponível',
-                    text: 'O aplicativo já está instalado ou seu navegador não suporta instalação PWA.',
+                    text: 'O aplicativo já está instalado ou não está disponível para instalação neste momento.',
                     confirmButtonColor: '#3b82f6'
                 });
                 return;
             }
+            
+            console.log('🚀 Disparando prompt de instalação...');
             
             // Mostrar prompt de instalação
             deferredPrompt.prompt();
             
             // Aguardar escolha do usuário
             const { outcome } = await deferredPrompt.userChoice;
+            console.log(`👤 Usuário escolheu: ${outcome}`);
             
             if (outcome === 'accepted') {
                 console.log('✅ Usuário aceitou a instalação');
                 Swal.fire({
                     icon: 'success',
-                    title: 'App Instalado!',
-                    text: 'O DSL Agendamento foi instalado com sucesso.',
+                    title: 'Instalando...',
+                    text: 'O aplicativo está sendo instalado.',
                     timer: 3000,
                     showConfirmButton: false
                 });
-                installBtn.style.display = 'none';
+                hideInstallButton();
             } else {
                 console.log('❌ Usuário recusou a instalação');
             }
@@ -3559,28 +3596,25 @@
         
         // Capturar evento de instalação PWA
         window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('🎯 Evento beforeinstallprompt capturado!');
+            console.log('✅ PWA pode ser instalado');
+            
             // Prevenir o mini-infobar do Chrome
             e.preventDefault();
             
             // Armazenar o evento para uso posterior
             deferredPrompt = e;
             
-            // Mostrar botão de instalação
-            if (installBtn) {
-                installBtn.style.display = 'flex';
-            }
-            
-            console.log('🎯 PWA disponível para instalação!');
+            // Mostrar botão de instalação flutuante
+            showInstallButton();
         });
         
         // Detectar quando o app foi instalado
         window.addEventListener('appinstalled', () => {
-            console.log('✅ PWA instalado com sucesso!');
+            console.log('🎉 PWA instalado com sucesso!');
             
             // Esconder botão de instalação
-            if (installBtn) {
-                installBtn.style.display = 'none';
-            }
+            hideInstallButton();
             
             // Limpar prompt
             deferredPrompt = null;
@@ -3597,10 +3631,9 @@
         
         // Verificar se já está instalado (modo standalone)
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-            console.log('✅ App já está instalado (modo standalone)');
-            if (installBtn) {
-                installBtn.style.display = 'none';
-            }
+            console.log('📱 Rodando em modo STANDALONE (PWA instalado)');
+        } else {
+            console.log('🌐 Rodando no navegador (PWA não instalado)');
         }
     </script>
     
