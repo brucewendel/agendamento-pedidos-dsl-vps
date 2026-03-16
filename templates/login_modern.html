@@ -493,19 +493,120 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<!-- PWA Service Worker Registration -->
+<!-- PWA Service Worker Registration e Diagnóstico -->
 <script>
+// Diagnóstico completo de PWA
+console.log('🔍 Iniciando diagnóstico PWA...');
+console.log('📍 URL atual:', window.location.href);
+console.log('🔒 Protocolo:', window.location.protocol);
+console.log('🌐 HTTPS:', window.location.protocol === 'https:');
+
+// Verificar suporte a Service Worker
 if ('serviceWorker' in navigator) {
+    console.log('✅ Service Worker suportado');
+    
     window.addEventListener('load', () => {
+        // Registrar Service Worker
         navigator.serviceWorker.register('/service-worker.js')
             .then(registration => {
                 console.log('✅ Service Worker registrado:', registration.scope);
+                
+                // Verificar se está ativo
+                if (registration.active) {
+                    console.log('✅ Service Worker ATIVO');
+                } else if (registration.installing) {
+                    console.log('⏳ Service Worker INSTALANDO...');
+                } else if (registration.waiting) {
+                    console.log('⏸️ Service Worker AGUARDANDO ativação');
+                }
             })
             .catch(error => {
-                console.log('❌ Erro ao registrar Service Worker:', error);
+                console.error('❌ Erro ao registrar Service Worker:', error);
             });
     });
+} else {
+    console.error('❌ Service Worker NÃO suportado neste navegador');
 }
+
+// Verificar manifest
+fetch('/manifest.json')
+    .then(response => {
+        if (response.ok) {
+            console.log('✅ Manifest.json acessível');
+            console.log('📄 Content-Type:', response.headers.get('content-type'));
+            return response.json();
+        } else {
+            console.error('❌ Manifest.json não encontrado (HTTP', response.status + ')');
+        }
+    })
+    .then(manifest => {
+        if (manifest) {
+            console.log('✅ Manifest carregado:', manifest.name);
+            console.log('📱 Ícones no manifest:', manifest.icons?.length || 0);
+            
+            // Verificar se ícones estão acessíveis
+            if (manifest.icons && manifest.icons.length > 0) {
+                const icon192 = manifest.icons.find(i => i.sizes === '192x192');
+                const icon512 = manifest.icons.find(i => i.sizes === '512x512');
+                
+                if (icon192) {
+                    fetch(icon192.src).then(r => {
+                        if (r.ok) {
+                            console.log('✅ Ícone 192x192 acessível');
+                        } else {
+                            console.error('❌ Ícone 192x192 não encontrado');
+                        }
+                    });
+                }
+                
+                if (icon512) {
+                    fetch(icon512.src).then(r => {
+                        if (r.ok) {
+                            console.log('✅ Ícone 512x512 acessível');
+                        } else {
+                            console.error('❌ Ícone 512x512 não encontrado');
+                        }
+                    });
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro ao carregar manifest:', error);
+    });
+
+// Capturar evento de instalação (beforeinstallprompt)
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('🎯 Evento beforeinstallprompt capturado!');
+    console.log('✅ PWA pode ser instalado');
+    e.preventDefault();
+    deferredPrompt = e;
+});
+
+// Verificar se já está instalado
+window.addEventListener('appinstalled', () => {
+    console.log('🎉 PWA instalado com sucesso!');
+});
+
+// Verificar modo standalone (já instalado)
+if (window.matchMedia('(display-mode: standalone)').matches) {
+    console.log('📱 Rodando em modo STANDALONE (PWA instalado)');
+} else {
+    console.log('🌐 Rodando no navegador (PWA não instalado)');
+}
+
+// Log de critérios PWA
+setTimeout(() => {
+    console.log('\n📋 CHECKLIST PWA:');
+    console.log('1. HTTPS:', window.location.protocol === 'https:' ? '✅' : '❌');
+    console.log('2. Service Worker:', 'serviceWorker' in navigator ? '✅' : '❌');
+    console.log('3. Manifest:', 'Verificar logs acima');
+    console.log('4. Ícones 192x192 e 512x512:', 'Verificar logs acima');
+    console.log('\n💡 Se todos os critérios estiverem OK mas o prompt não aparecer:');
+    console.log('   - Android: Aguarde alguns segundos ou recarregue a página');
+    console.log('   - iOS: Toque em Compartilhar → Adicionar à Tela de Início');
+}, 2000);
 </script>
 
 </div>
