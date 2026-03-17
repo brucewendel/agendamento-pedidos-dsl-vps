@@ -412,22 +412,36 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
         """
         params_count = {}
         
-        # Query principal com CTE para último evento
+        # Query principal com CTE para último evento e evento de entrega (tipo=7)
         sql_confirmados = """
             WITH UltimoEvento AS (
                 SELECT
                     e.carga_formada_erp,
                     e.seq_pedido_erp,
                     e.DESCRICAO,
+                    e.tipo,
                     ROW_NUMBER() OVER (PARTITION BY e.carga_formada_erp, e.seq_pedido_erp ORDER BY e.DATA_REGISTRO DESC) as rn
                 FROM FUSIONT.FUSIONTRAK_INT_EVENTOS e
+            ),
+            EventoEntrega AS (
+                SELECT
+                    e.carga_formada_erp,
+                    e.seq_pedido_erp,
+                    MAX(e.DATA_REGISTRO) as data_entrega
+                FROM FUSIONT.FUSIONTRAK_INT_EVENTOS e
+                WHERE e.tipo = 7
+                GROUP BY e.carga_formada_erp, e.seq_pedido_erp
             )
             SELECT
                 p.NUMPEDRCA, a.NUMPED, c.CLIENTE, p.DATA, p.NUMNOTA, p.NUMCAR,
                 a.PREVENTREGA, a.OBSERVACAO,
                 TO_CHAR(a.HORAINI, 'HH24:MI') || 'h' AS HORAINI,
                 TO_CHAR(a.HORAFIM, 'HH24:MI') || 'h' AS HORAFIM,
-                ue.DESCRICAO AS STATUS_ENTREGA
+                CASE 
+                    WHEN ee.data_entrega IS NOT NULL THEN 'ENTREGUE'
+                    WHEN ue.DESCRICAO IS NOT NULL THEN ue.DESCRICAO
+                    ELSE NULL
+                END AS STATUS_ENTREGA
             FROM
                 DSLTI_PEDAGEND a
             INNER JOIN
@@ -436,6 +450,8 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
                 PCCLIENT c ON p.CODCLI = c.CODCLI
             LEFT JOIN
                 UltimoEvento ue ON ue.seq_pedido_erp = TO_CHAR(p.NUMPED) AND ue.carga_formada_erp = TO_CHAR(p.NUMCAR) AND ue.rn = 1
+            LEFT JOIN
+                EventoEntrega ee ON ee.seq_pedido_erp = TO_CHAR(p.NUMPED) AND ee.carga_formada_erp = TO_CHAR(p.NUMCAR)
             WHERE
                 a.PREVENTREGA IS NOT NULL
         """
