@@ -585,13 +585,6 @@ def listar_painel():
         user_id = session.get('username')
     
     try:
-        # Parâmetros de paginação
-        page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 25))
-        if per_page not in [25, 50, 75, 100]:
-            per_page = 25
-        offset = (page - 1) * per_page
-        
         # Código RCA
         codigo_rca = session.get('rca_codusur') if 'rca_codusur' in session else None
         
@@ -600,6 +593,19 @@ def listar_painel():
         agendamentos, total_agendamentos = [], 0
         usuarios = []
         stats = {'agendados_hoje': 0, 'agendados_7_dias': 0}
+        
+        # Parâmetros de paginação específicos por aba
+        page_pendentes = int(request.args.get('page', 1))
+        per_page_pendentes = int(request.args.get('per_page', 25))
+        if per_page_pendentes not in [25, 50, 75, 100]:
+            per_page_pendentes = 25
+        offset_pendentes = (page_pendentes - 1) * per_page_pendentes
+        
+        page_confirmados = int(request.args.get('page_confirmados', 1))
+        per_page_confirmados = int(request.args.get('per_page_confirmados', 25))
+        if per_page_confirmados not in [25, 50, 75, 100]:
+            per_page_confirmados = 25
+        offset_confirmados = (page_confirmados - 1) * per_page_confirmados
         
         # OTIMIZAÇÃO: Carregar apenas dados da aba ativa
         if active_tab == 'dashboard':
@@ -612,28 +618,28 @@ def listar_painel():
             
             result = get_pedidos_pendentes(codigo_rca, request.args.get('numped_pendentes'), 
                                           request.args.get('data_pedido_pendentes'), 
-                                          request.args.get('codigo_cliente_pendentes'), offset, per_page)
+                                          request.args.get('codigo_cliente_pendentes'), offset_pendentes, per_page_pendentes)
             pedidos, total_pedidos = result if isinstance(result, tuple) else (result, len(result or []))
         elif active_tab == 'confirmados':
             result = get_agendamentos_confirmados(codigo_rca, request.args.get('numped_confirmados'),
                                                  request.args.get('data_de_confirmados'), 
-                                                 request.args.get('data_ate_confirmados'), offset, per_page)
+                                                 request.args.get('data_ate_confirmados'), offset_confirmados, per_page_confirmados)
             agendamentos, total_agendamentos = result if isinstance(result, tuple) else (result, len(result or []))
         elif active_tab == 'usuarios':
             usuarios = get_usuarios(request.args.get('rca'), request.args.get('supervisor'))
         
         # Paginação
         pagination = {
-            'page': page,
-            'pages': max(1, (total_pedidos + per_page - 1) // per_page),
-            'per_page': per_page,
+            'page': page_pendentes,
+            'pages': max(1, (total_pedidos + per_page_pendentes - 1) // per_page_pendentes),
+            'per_page': per_page_pendentes,
             'total': total_pedidos
         }
         
         pagination_confirmados = {
-            'page': page,
-            'pages': max(1, (total_agendamentos + per_page - 1) // per_page),
-            'per_page': per_page,
+            'page': page_confirmados,
+            'pages': max(1, (total_agendamentos + per_page_confirmados - 1) // per_page_confirmados),
+            'per_page': per_page_confirmados,
             'total': total_agendamentos
         }
         
