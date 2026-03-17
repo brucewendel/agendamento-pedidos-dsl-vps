@@ -1167,12 +1167,12 @@ def relatorio():
         
         print(f"[RELATORIO] Usuario: {user_name}, Codigo RCA: {codigo_rca}")
         
-        # Parâmetros de paginação
-        page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 25))
-        if per_page not in [25, 50, 75, 100]:
-            per_page = 25
-        offset = (page - 1) * per_page
+        # Parâmetros de paginação específicos para relatórios (usa page_confirmados)
+        page_confirmados = int(request.args.get('page_confirmados', 1))
+        per_page_confirmados = int(request.args.get('per_page_confirmados', 25))
+        if per_page_confirmados not in [25, 50, 75, 100]:
+            per_page_confirmados = 25
+        offset_confirmados = (page_confirmados - 1) * per_page_confirmados
         
         # Parâmetros de filtro
         numped_confirmados = request.args.get('numped_confirmados')
@@ -1180,7 +1180,7 @@ def relatorio():
         data_ate_confirmados = request.args.get('data_ate_confirmados')
         
         print(f"[RELATORIO] Filtros - Numped: {numped_confirmados}, Data De: {data_de_confirmados}, Data Ate: {data_ate_confirmados}")
-        print(f"[RELATORIO] Paginacao - Page: {page}, Per Page: {per_page}, Offset: {offset}")
+        print(f"[RELATORIO] Paginacao - Page: {page_confirmados}, Per Page: {per_page_confirmados}, Offset: {offset_confirmados}")
         
         # Buscar agendamentos confirmados
         agendamentos_result = get_agendamentos_confirmados(
@@ -1188,8 +1188,8 @@ def relatorio():
             numped_filtro=numped_confirmados,
             data_de=data_de_confirmados,
             data_ate=data_ate_confirmados,
-            offset=offset,
-            per_page=per_page
+            offset=offset_confirmados,
+            per_page=per_page_confirmados
         )
         
         if isinstance(agendamentos_result, tuple):
@@ -1201,10 +1201,10 @@ def relatorio():
         print(f"[RELATORIO] Resultado - Total: {total_agendamentos}, Registros retornados: {len(agendamentos) if agendamentos else 0}")
         
         # Paginação
-        pagination = {
-            'page': page,
-            'pages': max(1, (total_agendamentos + per_page - 1) // per_page),
-            'per_page': per_page,
+        pagination_confirmados = {
+            'page': page_confirmados,
+            'pages': max(1, (total_agendamentos + per_page_confirmados - 1) // per_page_confirmados),
+            'per_page': per_page_confirmados,
             'total': total_agendamentos
         }
         
@@ -1220,7 +1220,9 @@ def relatorio():
                              rca_nome=user_name,
                              rca_codusur=user_id,
                              active_tab='confirmados',
-                             pagination=pagination)
+                             pagination={'page': 1, 'pages': 1, 'per_page': 25, 'total': 0},
+                             pagination_confirmados=pagination_confirmados,
+                             is_admin=session.get('user_type') in ['admin', 'pcempr'])
     except Exception as e:
         print(f"[RELATORIO] ERRO: {str(e)}")
         import traceback
