@@ -611,7 +611,8 @@ def listar_painel():
                 codigo_rca = codigo_rca_filtro
             
             result = get_pedidos_pendentes(codigo_rca, request.args.get('numped_pendentes'), 
-                                          request.args.get('data_pedido_pendentes'), offset, per_page)
+                                          request.args.get('data_pedido_pendentes'), 
+                                          request.args.get('codigo_cliente_pendentes'), offset, per_page)
             pedidos, total_pedidos = result if isinstance(result, tuple) else (result, len(result or []))
         elif active_tab == 'confirmados':
             result = get_agendamentos_confirmados(codigo_rca, request.args.get('numped_confirmados'),

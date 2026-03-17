@@ -1794,6 +1794,10 @@
                             <label class="form-label">Data do Pedido</label>
                             <input type="date" class="form-input" name="data_pedido_pendentes" value="{{ request.args.get('data_pedido_pendentes', '') }}">
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Código Cliente</label>
+                            <input type="text" class="form-input" name="codigo_cliente_pendentes" value="{{ request.args.get('codigo_cliente_pendentes', '') }}" placeholder="Ex: 1234">
+                        </div>
                         {% if is_admin %}
                         <div class="form-group">
                             <label class="form-label">Código RCA</label>
@@ -1826,6 +1830,7 @@
                                 <th><input type="checkbox" id="selectAllCheckbox"></th>
                                 <th>Ped. RCA</th>
                                 <th>Nº Pedido</th>
+                                <th>Cód. Cliente</th>
                                 <th>Cliente</th>
                                 <th>Nota Fiscal</th>
                                 <th>Carregamento</th>
@@ -1843,6 +1848,7 @@
                                 </td>
                                 <td>{{ pedido['NUMPEDRCA'] | none_to_dash }}</td>
                                 <td><strong>{{ pedido['NUMPED'] }}</strong></td>
+                                <td>{{ pedido['CODCLI'] | none_to_dash }}</td>
                                 <td>{{ pedido['CLIENTE'] | none_to_dash }}</td>
                                 <td>{{ pedido['NUMNOTA'] | none_to_dash }}</td>
                                 <td>{{ pedido['NUMCAR'] | none_to_dash }}</td>
@@ -1857,7 +1863,7 @@
                             {% else %}
                             <!-- DEBUG: Nenhum pedido encontrado, exibindo mensagem -->
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 20px; color: var(--dark-gray);">
+                                <td colspan="9" style="text-align: center; padding: 20px; color: var(--dark-gray);">
                                     <i class="bi bi-inbox" style="font-size: 1.5rem; margin-bottom: 6px; display: block;"></i>
                                     Nenhum pedido pendente encontrado.
                                 </td>

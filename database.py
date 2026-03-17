@@ -237,7 +237,7 @@ def execute_query(query, params=None, fetch_one=False, fetch_all=True):
         cursor.close()
         release_connection(connection)
 
-def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None, offset=0, per_page=25):
+def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None, codigo_cliente=None, offset=0, per_page=25):
     """Obtém pedidos da PCPEDC que ainda não foram agendados (não existem na DSLTI_PEDAGEND)"""
     print(f"[DEBUG get_pedidos_pendentes] Chamada com codigo_rca={codigo_rca} (tipo: {type(codigo_rca)})")
     
@@ -265,7 +265,7 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
         # Query principal para buscar pedidos
         # OTIMIZADO: Usando LEFT JOIN em vez de NOT EXISTS para melhor performance
         sql_pedidos = """
-            SELECT p.NUMPEDRCA, p.NUMPED, c.CLIENTE, p.DATA, p.NUMNOTA, p.NUMCAR
+            SELECT p.NUMPEDRCA, p.NUMPED, p.CODCLI, c.CLIENTE, p.DATA, p.NUMNOTA, p.NUMCAR
             FROM PCPEDC p
             INNER JOIN PCCLIENT c ON p.CODCLI = c.CODCLI 
             LEFT JOIN DSLTI_PEDAGEND a ON a.NUMPED = p.NUMPED
@@ -297,6 +297,12 @@ def get_pedidos_pendentes(codigo_rca=None, numped_filtro=None, data_filtro=None,
             sql_pedidos += " AND TRUNC(p.DATA) = TO_DATE(:data_p, 'YYYY-MM-DD')"
             params_count['data_p'] = data_filtro
             params_pedidos['data_p'] = data_filtro
+        
+        if codigo_cliente:
+            sql_count += " AND p.CODCLI = :codigo_cliente"
+            sql_pedidos += " AND p.CODCLI = :codigo_cliente"
+            params_count['codigo_cliente'] = int(codigo_cliente)
+            params_pedidos['codigo_cliente'] = int(codigo_cliente)
         
         # Executar contagem
         print(f"[DEBUG get_pedidos_pendentes] Executando query de contagem com params: {params_count}")
