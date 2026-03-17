@@ -561,9 +561,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
     console.log('✅ PWA pode ser instalado');
     e.preventDefault();
     deferredPrompt = e;
-    
-    // Mostrar botão de instalação
-    showInstallButton();
 });
 
 // Verificar se já está instalado
@@ -577,6 +574,10 @@ if (window.matchMedia('(display-mode: standalone)').matches) {
     console.log('📱 Rodando em modo STANDALONE (PWA instalado)');
 } else {
     console.log('🌐 Rodando no navegador (PWA não instalado)');
+    // Mostrar botão de instalação sempre que não estiver em modo standalone
+    window.addEventListener('load', () => {
+        showInstallButton();
+    });
 }
 
 // Criar e mostrar botão de instalação
@@ -597,29 +598,64 @@ function showInstallButton() {
     
     // Adicionar evento de clique
     installButton.addEventListener('click', async () => {
-        if (!deferredPrompt) {
-            console.log('⚠️ Prompt de instalação não disponível');
+        // Se tem prompt disponível (Chrome/Edge) - INSTALAÇÃO AUTOMÁTICA
+        if (deferredPrompt) {
+            console.log('🚀 Disparando prompt de instalação...');
+            
+            try {
+                // Mostrar o prompt de instalação
+                deferredPrompt.prompt();
+                
+                // Aguardar escolha do usuário
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`👤 Usuário escolheu: ${outcome}`);
+                
+                if (outcome === 'accepted') {
+                    console.log('✅ Usuário aceitou a instalação');
+                    hideInstallButton();
+                } else {
+                    console.log('❌ Usuário recusou a instalação');
+                }
+                
+                // Limpar o prompt
+                deferredPrompt = null;
+            } catch (error) {
+                console.error('Erro ao instalar PWA:', error);
+            }
             return;
         }
         
-        console.log('🚀 Disparando prompt de instalação...');
+        // Se não tem prompt disponível - Mostrar instruções manuais
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isChrome = /Chrome/i.test(navigator.userAgent) && !/Edg/i.test(navigator.userAgent);
+        const isEdge = /Edg/i.test(navigator.userAgent);
         
-        // Mostrar o prompt de instalação
-        deferredPrompt.prompt();
+        let instructions = '';
         
-        // Aguardar escolha do usuário
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`👤 Usuário escolheu: ${outcome}`);
-        
-        if (outcome === 'accepted') {
-            console.log('✅ Usuário aceitou a instalação');
+        if (isAndroid && isChrome) {
+            instructions = '<div style="text-align: left; padding: 10px;"><strong>📱 Como instalar no Android (Chrome):</strong><br><br>1. Toque no menu <strong>⋮</strong> (três pontos) no canto superior direito<br>2. Selecione <strong>"Adicionar à tela inicial"</strong> ou <strong>"Instalar app"</strong><br>3. Confirme tocando em <strong>"Adicionar"</strong><br><br>O ícone do app aparecerá na sua tela inicial! 🎉</div>';
+        } else if (isIOS) {
+            instructions = '<div style="text-align: left; padding: 10px;"><strong>📱 Como instalar no iPhone/iPad (Safari):</strong><br><br>1. Toque no botão <strong>Compartilhar</strong> <svg style="display: inline; width: 16px; height: 16px;" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0l3 3h-2v5H7V3H5l3-3zm3 8v5H5V8H3v7h10V8h-2z"/></svg><br>2. Role para baixo e toque em <strong>"Adicionar à Tela de Início"</strong><br>3. Toque em <strong>"Adicionar"</strong> no canto superior direito<br><br>O ícone do app aparecerá na sua tela inicial! 🎉</div>';
+        } else if (isChrome || isEdge) {
+            instructions = '<div style="text-align: left; padding: 10px;"><strong>💻 Como instalar no Desktop:</strong><br><br>1. Procure o ícone <strong>⊕</strong> ou <strong>🖥️</strong> na barra de endereço<br>2. Clique nele e selecione <strong>"Instalar"</strong><br><br><strong>OU</strong><br><br>1. Clique no menu <strong>⋮</strong> (três pontos)<br>2. Selecione <strong>"Instalar DSL Agendamento"</strong><br><br>O app será instalado no seu computador! 🎉</div>';
         } else {
-            console.log('❌ Usuário recusou a instalação');
+            instructions = '<div style="text-align: left; padding: 10px;"><strong>ℹ️ Instalação Manual:</strong><br><br>Para instalar este aplicativo:<br><br>1. Use o navegador <strong>Chrome</strong>, <strong>Edge</strong> ou <strong>Safari</strong><br>2. Procure a opção de <strong>"Adicionar à tela inicial"</strong> ou <strong>"Instalar app"</strong> no menu do navegador<br>3. Siga as instruções na tela<br><br>💡 <strong>Dica:</strong> Acesse via <strong>https://</strong> para instalação automática.</div>';
         }
         
-        // Limpar o prompt
-        deferredPrompt = null;
-        hideInstallButton();
+        // Usar SweetAlert2 se disponível, senão usar alert nativo
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'info',
+                title: 'Como Instalar o App',
+                html: instructions,
+                confirmButtonText: 'Entendi',
+                confirmButtonColor: '#3b82f6',
+                width: '500px'
+            });
+        } else {
+            alert('Para instalar o app, use o menu do navegador e selecione "Adicionar à tela inicial" ou "Instalar app".');
+        }
     });
     
     // Adicionar ao body
