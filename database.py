@@ -514,9 +514,9 @@ def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, obs
         preventrega_date = datetime.strptime(preventrega_str, '%Y-%m-%d').date()
         data_pedido_date = data_pedido.date()
         
-        # Validação: entrega deve ser pelo menos 24h após a data do pedido
-        if preventrega_date < data_pedido_date + timedelta(days=1):
-            return {'status': 'error', 'message': 'Pedidos não podem ser agendados com menos de 24 horas da data do pedido'}
+        # Validação: entrega não pode ser na mesma data do pedido
+        if preventrega_date <= data_pedido_date:
+            return {'status': 'error', 'message': 'Pedidos não podem ser agendados para a mesma data do pedido'}
         
         # Validação: entrega não pode exceder 6 dias da data do pedido
         if preventrega_date > data_pedido_date + timedelta(days=6):
@@ -601,9 +601,9 @@ def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, hora
             
             data_pedido_date = data_pedido.date()
             
-            # Validação: entrega deve ser pelo menos 24h após a data do pedido
-            if preventrega_date < data_pedido_date + timedelta(days=1):
-                msg = f'Pedidos não podem ser agendados com menos de 24 horas da data do pedido ({data_pedido_date.strftime("%d/%m/%Y")}).'
+            # Validação: entrega não pode ser na mesma data do pedido
+            if preventrega_date <= data_pedido_date:
+                msg = f'Pedidos não podem ser agendados para a mesma data do pedido ({data_pedido_date.strftime("%d/%m/%Y")}).'
                 return {'status': 'error', 'message': msg}
             
             # Validação: entrega não pode exceder 6 dias da data do pedido
