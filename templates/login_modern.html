@@ -208,29 +208,6 @@
             
         </div>
         
-        <!-- PWA Install Section -->
-        <div class="mt-6 text-center space-y-3" x-show="showInstallButton">
-            <p class="text-sm text-slate-600 dark:text-slate-400">
-                <i class="bi bi-download"></i> 
-                Clique para instalar o aplicativo
-            </p>
-            <button 
-                @click="installPWA"
-                class="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 text-sm font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-                <i class="bi bi-download"></i>
-                <span>Instalar Aplicativo</span>
-            </button>
-        </div>
-        
-        <!-- Loading PWA Message -->
-        <div class="mt-6 text-center" x-show="!showInstallButton && !isPWAInstalled()">
-            <p class="text-xs text-slate-500 dark:text-slate-400">
-                <i class="bi bi-hourglass-split"></i> 
-                Preparando instalação do aplicativo...
-            </p>
-        </div>
-        
     </div>
 </div>
 
