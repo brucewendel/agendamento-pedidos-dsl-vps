@@ -533,21 +533,29 @@ def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, obs
         cursor = connection.cursor()
         
         # Verificar se o pedido existe na PCPEDC
-        cursor.execute("SELECT DATA FROM PCPEDC WHERE NUMPED = :1", [numped])
+        cursor.execute("SELECT DATA, POSICAO, DTFAT, CODCLI FROM PCPEDC WHERE NUMPED = :1", [numped])
         result = cursor.fetchone()
         if not result:
             return {'status': 'error', 'message': 'Pedido não encontrado'}
         
-        data_pedido = result[0]
+        data_pedido, posicao, dtfat, codcli = result
         preventrega_date = datetime.strptime(preventrega_str, '%Y-%m-%d').date()
         data_pedido_date = data_pedido.date()
+        
+        # Define a data base para o limite máximo conforme a posição do pedido
+        if posicao == 'F' and dtfat:
+            data_base_limite = dtfat.date()
+        else:
+            data_base_limite = data_pedido_date
         
         # Validação: entrega não pode ser na mesma data do pedido
         if preventrega_date <= data_pedido_date:
             return {'status': 'error', 'message': 'Pedidos não podem ser agendados para a mesma data do pedido'}
         
-        # Validação: entrega não pode exceder 6 dias da data do pedido
-        if preventrega_date > data_pedido_date + timedelta(days=6):
+        # Validação: entrega não pode exceder 6 dias da data base (DTFAT se POSICAO='F', DATA se POSICAO='L')
+        # Exceção: CODCLI = 120502 não possui limite máximo de dias
+        CLIENTES_SEM_LIMITE_DIAS = {120502}
+        if codcli not in CLIENTES_SEM_LIMITE_DIAS and preventrega_date > data_base_limite + timedelta(days=6):
             return {'status': 'error', 'message': 'Pedidos não podem ser agendados superior a 6 dias da data do pedido'}
         
         # Verificar se já existe agendamento para este pedido
@@ -627,28 +635,39 @@ def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, hora
         
         # Buscar datas dos pedidos para validação
         placeholders_dates = ','.join([f':{i+1}' for i in range(len(numpeds_list))])
-        sql_fetch_dates = f"SELECT NUMPED, DATA FROM PCPEDC WHERE NUMPED IN ({placeholders_dates})"
+        sql_fetch_dates = f"SELECT NUMPED, DATA, POSICAO, DTFAT, CODCLI FROM PCPEDC WHERE NUMPED IN ({placeholders_dates})"
         cursor.execute(sql_fetch_dates, numpeds_list)
-        pedidos_data = {row[0]: row[1] for row in cursor.fetchall()}
+        pedidos_data = {row[0]: (row[1], row[2], row[3], row[4]) for row in cursor.fetchall()}
         
         preventrega_date = datetime.strptime(preventrega_str, '%Y-%m-%d').date()
         
+        # Clientes com exceção de limite máximo de dias para agendamento
+        CLIENTES_SEM_LIMITE_DIAS = {120502}
+        
         # Validar cada pedido
         for numped in numpeds_list:
-            data_pedido = pedidos_data.get(numped)
-            if not data_pedido:
+            pedido_info = pedidos_data.get(numped)
+            if not pedido_info:
                 return {'status': 'error', 'message': f'Erro: Pedido {numped} não encontrado para validação.'}
             
+            data_pedido, posicao, dtfat, codcli = pedido_info
             data_pedido_date = data_pedido.date()
+            
+            # Define a data base para o limite máximo conforme a posição do pedido
+            if posicao == 'F' and dtfat:
+                data_base_limite = dtfat.date()
+            else:
+                data_base_limite = data_pedido_date
             
             # Validação: entrega não pode ser na mesma data do pedido
             if preventrega_date <= data_pedido_date:
                 msg = f'Pedidos não podem ser agendados para a mesma data do pedido ({data_pedido_date.strftime("%d/%m/%Y")}).'
                 return {'status': 'error', 'message': msg}
             
-            # Validação: entrega não pode exceder 6 dias da data do pedido
-            if preventrega_date > data_pedido_date + timedelta(days=6):
-                msg = f'Erro no pedido {numped}: Pedidos não podem ser agendados superior a 6 dias da data do pedido ({data_pedido_date.strftime("%d/%m/%Y")}).'
+            # Validação: entrega não pode exceder 6 dias da data base (DTFAT se POSICAO='F', DATA se POSICAO='L')
+            # Exceção: CODCLI = 120502 não possui limite máximo de dias
+            if codcli not in CLIENTES_SEM_LIMITE_DIAS and preventrega_date > data_base_limite + timedelta(days=6):
+                msg = f'Erro no pedido {numped}: Pedidos não podem ser agendados superior a 6 dias da data do pedido ({data_base_limite.strftime("%d/%m/%Y")}).'
                 return {'status': 'error', 'message': msg}
         
         # Verificar se algum pedido já possui agendamento
