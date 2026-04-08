@@ -393,7 +393,7 @@ def get_usuario_by_id(codusur):
         }
     return None
 
-def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=None, data_ate=None, offset=0, per_page=25):
+def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=None, data_ate=None, offset=0, per_page=25, codcli_filtro=None):
     """Obtém agendamentos confirmados com junção completa incluindo status de entrega"""
     connection = get_connection()
     if not connection:
@@ -483,6 +483,12 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
             params_count['data_ate'] = data_ate
             params_confirmados['data_ate'] = data_ate
         
+        if codcli_filtro:
+            sql_count += " AND p.CODCLI = :codcli"
+            sql_confirmados += " AND p.CODCLI = :codcli"
+            params_count['codcli'] = int(codcli_filtro)
+            params_confirmados['codcli'] = int(codcli_filtro)
+        
         # Executar contagem
         cursor.execute(sql_count, params_count)
         total_confirmados = cursor.fetchone()[0]
@@ -506,7 +512,7 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
         if connection:
             release_connection(connection)
 
-def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observacao):
+def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observacao, is_admin=False):
     """Insere um novo agendamento na tabela DSLTI_PEDAGEND com validações de data"""
     from datetime import datetime, timedelta
     
@@ -555,7 +561,7 @@ def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, obs
         # Validação: entrega não pode exceder 6 dias da data base (DTFAT se POSICAO='F', DATA se POSICAO='L')
         # Exceção: CODCLI = 120502 não possui limite máximo de dias
         CLIENTES_SEM_LIMITE_DIAS = {120502}
-        if codcli not in CLIENTES_SEM_LIMITE_DIAS and preventrega_date > data_base_limite + timedelta(days=6):
+        if not is_admin and codcli not in CLIENTES_SEM_LIMITE_DIAS and preventrega_date > data_base_limite + timedelta(days=6):
             return {'status': 'error', 'message': 'Pedidos não podem ser agendados superior a 6 dias da data do pedido'}
         
         # Verificar se já existe agendamento para este pedido
@@ -604,7 +610,7 @@ def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, obs
         if connection:
             release_connection(connection)
 
-def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, horafim_str, observacao):
+def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, horafim_str, observacao, is_admin=False):
     """Insere múltiplos agendamentos na tabela DSLTI_PEDAGEND com validações de data"""
     from datetime import datetime, timedelta
     
@@ -666,7 +672,7 @@ def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, hora
             
             # Validação: entrega não pode exceder 6 dias da data base (DTFAT se POSICAO='F', DATA se POSICAO='L')
             # Exceção: CODCLI = 120502 não possui limite máximo de dias
-            if codcli not in CLIENTES_SEM_LIMITE_DIAS and preventrega_date > data_base_limite + timedelta(days=6):
+            if not is_admin and codcli not in CLIENTES_SEM_LIMITE_DIAS and preventrega_date > data_base_limite + timedelta(days=6):
                 msg = f'Erro no pedido {numped}: Pedidos não podem ser agendados superior a 6 dias da data do pedido ({data_base_limite.strftime("%d/%m/%Y")}).'
                 return {'status': 'error', 'message': msg}
         

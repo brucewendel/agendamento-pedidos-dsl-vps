@@ -476,6 +476,7 @@ def painel():
             numped_confirmados = request.args.get('numped_confirmados')
             data_de_confirmados = request.args.get('data_de_confirmados')
             data_ate_confirmados = request.args.get('data_ate_confirmados')
+            codcli_confirmados = request.args.get('codcli_confirmados')
             
             agendamentos_result = get_agendamentos_confirmados(
                 codigo_rca=codigo_rca,
@@ -483,7 +484,8 @@ def painel():
                 data_de=data_de_confirmados,
                 data_ate=data_ate_confirmados,
                 offset=offset,
-                per_page=per_page
+                per_page=per_page,
+                codcli_filtro=codcli_confirmados
             )
             
             if isinstance(agendamentos_result, tuple):
@@ -623,7 +625,8 @@ def listar_painel():
         elif active_tab == 'confirmados':
             result = get_agendamentos_confirmados(codigo_rca, request.args.get('numped_confirmados'),
                                                  request.args.get('data_de_confirmados'), 
-                                                 request.args.get('data_ate_confirmados'), offset_confirmados, per_page_confirmados)
+                                                 request.args.get('data_ate_confirmados'), offset_confirmados, per_page_confirmados,
+                                                 codcli_filtro=request.args.get('codcli_confirmados'))
             agendamentos, total_agendamentos = result if isinstance(result, tuple) else (result, len(result or []))
         elif active_tab == 'usuarios':
             usuarios = get_usuarios(request.args.get('rca'), request.args.get('supervisor'))
@@ -722,7 +725,8 @@ def atualizar():
             }), 400
         
         # Atualiza no banco
-        result = atualizar_agendamento(numped, preventrega, horaini, horafim, observacao)
+        result = atualizar_agendamento(numped, preventrega, horaini, horafim, observacao,
+                                       is_admin=session.get('user_type') in ['admin', 'pcempr'])
         
         if result.get('status') == 'success':
             return jsonify({
@@ -802,7 +806,8 @@ def atualizar_massa():
         for numped in numped_list:
             try:
                 # Atualiza no banco
-                result = atualizar_agendamento(numped, preventrega, horaini, horafim, observacao)
+                result = atualizar_agendamento(numped, preventrega, horaini, horafim, observacao,
+                                               is_admin=session.get('user_type') in ['admin', 'pcempr'])
                 
                 if result.get('status') == 'success':
                     sucessos += 1
@@ -907,7 +912,8 @@ def editar_agendamento_route():
         # Editar no banco
         result = editar_agendamento(
             numped, preventrega, horaini, horafim, observacao,
-            get_connection, release_connection, get_app_user_name
+            get_connection, release_connection, get_app_user_name,
+            is_admin=session.get('user_type') in ['admin', 'pcempr']
         )
         
         if result.get('status') == 'success':
@@ -983,7 +989,8 @@ def editar_agendamento_massa_route():
         # Editar no banco
         result = editar_agendamento_massa(
             numped_list, preventrega, horaini, horafim, observacao,
-            get_connection, release_connection, get_app_user_name
+            get_connection, release_connection, get_app_user_name,
+            is_admin=session.get('user_type') in ['admin', 'pcempr']
         )
         
         if result.get('status') == 'success':
@@ -1178,8 +1185,9 @@ def relatorio():
         numped_confirmados = request.args.get('numped_confirmados')
         data_de_confirmados = request.args.get('data_de_confirmados')
         data_ate_confirmados = request.args.get('data_ate_confirmados')
+        codcli_confirmados = request.args.get('codcli_confirmados')
         
-        print(f"[RELATORIO] Filtros - Numped: {numped_confirmados}, Data De: {data_de_confirmados}, Data Ate: {data_ate_confirmados}")
+        print(f"[RELATORIO] Filtros - Numped: {numped_confirmados}, Data De: {data_de_confirmados}, Data Ate: {data_ate_confirmados}, CodCli: {codcli_confirmados}")
         print(f"[RELATORIO] Paginacao - Page: {page_confirmados}, Per Page: {per_page_confirmados}, Offset: {offset_confirmados}")
         
         # Buscar agendamentos confirmados
@@ -1189,7 +1197,8 @@ def relatorio():
             data_de=data_de_confirmados,
             data_ate=data_ate_confirmados,
             offset=offset_confirmados,
-            per_page=per_page_confirmados
+            per_page=per_page_confirmados,
+            codcli_filtro=codcli_confirmados
         )
         
         if isinstance(agendamentos_result, tuple):

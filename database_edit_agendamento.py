@@ -4,7 +4,7 @@ Funções para editar agendamentos existentes
 from datetime import datetime, timedelta
 from flask import session
 
-def editar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observacao, connection_func, release_func, get_user_func):
+def editar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observacao, connection_func, release_func, get_user_func, is_admin=False):
     """Edita um agendamento existente na tabela DSLTI_PEDAGEND com validações de data"""
     
     # Obter nome do usuário da aplicação para auditoria
@@ -32,13 +32,14 @@ def editar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observ
         preventrega_date = datetime.strptime(preventrega_str, '%Y-%m-%d').date()
         data_pedido_date = data_pedido.date()
         
-        # Validação: entrega deve ser pelo menos 24h após a data do pedido
-        if preventrega_date < data_pedido_date + timedelta(days=1):
-            return {'status': 'error', 'message': 'Pedidos não podem ser agendados com menos de 24 horas da data do pedido'}
-        
-        # Validação: entrega não pode exceder 6 dias da data do pedido
-        if preventrega_date > data_pedido_date + timedelta(days=6):
-            return {'status': 'error', 'message': 'Pedidos não podem ser agendados superior a 6 dias da data do pedido'}
+        if not is_admin:
+            # Validação: entrega deve ser pelo menos 24h após a data do pedido
+            if preventrega_date < data_pedido_date + timedelta(days=1):
+                return {'status': 'error', 'message': 'Pedidos não podem ser agendados com menos de 24 horas da data do pedido'}
+            
+            # Validação: entrega não pode exceder 6 dias da data do pedido
+            if preventrega_date > data_pedido_date + timedelta(days=6):
+                return {'status': 'error', 'message': 'Pedidos não podem ser agendados superior a 6 dias da data do pedido'}
         
         # Atualizar agendamento
         sql_update = """
@@ -46,8 +47,7 @@ def editar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observ
                 PREVENTREGA = TO_DATE(:prev, 'YYYY-MM-DD'),
                 HORAINI = TO_DATE(:h_ini, 'YYYY-MM-DD HH24:MI'),
                 HORAFIM = TO_DATE(:h_fim, 'YYYY-MM-DD HH24:MI'),
-                OBSERVACAO = :obs,
-                DATA_ALTERACAO = SYSDATE
+                OBSERVACAO = :obs
             WHERE NUMPED = :numped
         """
         
@@ -72,7 +72,7 @@ def editar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observ
             release_func(connection)
 
 
-def editar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, horafim_str, observacao, connection_func, release_func, get_user_func):
+def editar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, horafim_str, observacao, connection_func, release_func, get_user_func, is_admin=False):
     """Edita múltiplos agendamentos na tabela DSLTI_PEDAGEND com validações de data"""
     
     if not numpeds_list:
@@ -118,17 +118,18 @@ def editar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, horafim
             if not data_pedido:
                 return {'status': 'error', 'message': f'Erro: Pedido {numped} não encontrado para validação.'}
             
-            data_pedido_date = data_pedido.date()
-            
-            # Validação: entrega deve ser pelo menos 24h após a data do pedido
-            if preventrega_date < data_pedido_date + timedelta(days=1):
-                msg = f'Pedidos não podem ser agendados com menos de 24 horas da data do pedido ({data_pedido_date.strftime("%d/%m/%Y")}).'
-                return {'status': 'error', 'message': msg}
-            
-            # Validação: entrega não pode exceder 6 dias da data do pedido
-            if preventrega_date > data_pedido_date + timedelta(days=6):
-                msg = f'Erro no pedido {numped}: Pedidos não podem ser agendados superior a 6 dias da data do pedido ({data_pedido_date.strftime("%d/%m/%Y")}).'
-                return {'status': 'error', 'message': msg}
+            if not is_admin:
+                data_pedido_date = data_pedido.date()
+                
+                # Validação: entrega deve ser pelo menos 24h após a data do pedido
+                if preventrega_date < data_pedido_date + timedelta(days=1):
+                    msg = f'Pedidos não podem ser agendados com menos de 24 horas da data do pedido ({data_pedido_date.strftime("%d/%m/%Y")}).'
+                    return {'status': 'error', 'message': msg}
+                
+                # Validação: entrega não pode exceder 6 dias da data do pedido
+                if preventrega_date > data_pedido_date + timedelta(days=6):
+                    msg = f'Erro no pedido {numped}: Pedidos não podem ser agendados superior a 6 dias da data do pedido ({data_pedido_date.strftime("%d/%m/%Y")}).'
+                    return {'status': 'error', 'message': msg}
         
         # Atualizar agendamentos em massa
         sql_update = """
@@ -136,8 +137,7 @@ def editar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, horafim
                 PREVENTREGA = TO_DATE(:prev, 'YYYY-MM-DD'),
                 HORAINI = TO_DATE(:h_ini, 'YYYY-MM-DD HH24:MI'),
                 HORAFIM = TO_DATE(:h_fim, 'YYYY-MM-DD HH24:MI'),
-                OBSERVACAO = :obs,
-                DATA_ALTERACAO = SYSDATE
+                OBSERVACAO = :obs
             WHERE NUMPED = :numped
         """
         
