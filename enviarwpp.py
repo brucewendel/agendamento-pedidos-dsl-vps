@@ -17,7 +17,7 @@ headers = {
     "Content-Type": "application/json"
 }
 
-def send_message(body, numbers=None, numero_destino=None, user_id=19, queue_id="", send_signature=True, close_ticket=True):
+def send_message(body, numbers=None, numero_destino=None, user_id="", queue_id="", send_signature=False, close_ticket=True):
     """
     Envia uma mensagem de texto para vários números usando a API do WhatsApp.
 

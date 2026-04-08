@@ -33,6 +33,7 @@ COPY app.py .
 COPY config.py .
 COPY auth.py .
 COPY database.py .
+COPY database_edit_agendamento.py .
 COPY routes.py .
 COPY charts.py .
 COPY enviarwpp.py .
