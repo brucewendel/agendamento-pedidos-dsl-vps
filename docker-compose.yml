@@ -10,11 +10,14 @@ services:
       - FLASK_ENV=production
       - FLASK_DEBUG=False
       - REDIS_HOST=redis
+      - TZ=America/Sao_Paulo
     env_file:
       - .env
     restart: unless-stopped
     volumes:
       - ./backups:/app/backups
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     networks:
       - agendamento-network
       - npm-network
@@ -26,6 +29,8 @@ services:
     container_name: agendamento-redis
     ports:
       - "6379:6379"
+    environment:
+      - TZ=America/Sao_Paulo
     networks:
       - agendamento-network
     restart: unless-stopped
