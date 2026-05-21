@@ -11,6 +11,7 @@ from config import (
     API_URL, API_TOKEN, NUMERO_ADMIN
 )
 from database import get_usuario_by_id, get_usuario_pcempr_by_name, authenticate_pcempr_user, redis_client
+from enviarwpp import send_message
 
 def login_required(f):
     """Decorator para verificar se o usuário está logado"""
@@ -87,40 +88,11 @@ def generate_token():
     return ''.join(random.choices(string.digits, k=6))
 
 
-
-def send_whatsapp_message(telefone, message):
-    """Envia mensagem via WhatsApp usando a API configurada"""
-    if not API_URL or not API_TOKEN:
-        print("API WhatsApp não configurada")
-        return False
-    
-    try:
-        headers = {
-            'Authorization': f'Bearer {API_TOKEN}',
-            'Content-Type': 'application/json'
-        }
-        
-        # Usar o mesmo formato do enviarwpp.py
-        data = {
-            'number': telefone,  # Mudança: 'phone' -> 'number'
-            'body': message,     # Mudança: 'message' -> 'body'
-            'userId': 19,
-            'queueId': "",
-            'sendSignature': False,
-            'closeTicket': False
-        }
-        
-        response = requests.post(API_URL, headers=headers, json=data, timeout=10)
-        response.raise_for_status()
-        return response.status_code == 200
-    except Exception as e:
-        print(f"Erro ao enviar WhatsApp: {e}")
-        return False
-
 def send_whatsapp_token(telefone, token, nome):
     """Envia token via WhatsApp"""
     message = f"‎🔐 Código de Acesso DSL\n\nOlá {nome}!\n\nSeu código de acesso é: {token}\n\n⏰ Este código expira em 5 minutos.\n\nNão compartilhe este código com ninguém."
-    return send_whatsapp_message(telefone, message)
+    results = send_message(body=message, numero_destino=telefone)
+    return len(results) > 0 and results[0][1]  # Retorna True se enviado com sucesso
 
 def notify_admin_rca_login(nome, telefone, success=True):
     """Notifica o admin sobre tentativa de login de RCA"""
@@ -135,7 +107,7 @@ def notify_admin_rca_login(nome, telefone, success=True):
     message += f"📱 **Telefone:** {telefone}\n"
     message += f"🕒 **Horário:** {timestamp}"
     
-    send_whatsapp_message(NUMERO_ADMIN, message)
+    send_message(body=message, numero_destino=NUMERO_ADMIN)
 
 def create_whatsapp_token(codusur, telefone, nome):
     """Cria e armazena um token WhatsApp para RCA"""
