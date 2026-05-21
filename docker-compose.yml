@@ -19,26 +19,22 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
-      - agendamento-network
-      - npm-network
+      - agendamento-dsl
     depends_on:
       - redis
 
   redis:
     image: redis:latest
-    container_name: agendamento-redis
+    container_name: agendamento-redis-dsl
     ports:
       - "6379:6379"
     environment:
       - TZ=America/Sao_Paulo
     networks:
-      - agendamento-network
+      - agendamento-dsl
     restart: unless-stopped
 
 networks:
-  agendamento-network:
+  agendamento-dsl:
     driver: bridge
 
-  npm-network:
-    external: true
-    name: npm-nginx_default
