@@ -91,7 +91,7 @@ def generate_token():
 def send_whatsapp_token(telefone, token, nome):
     """Envia token via WhatsApp"""
     message = f"‎🔐 Código de Acesso DSL\n\nOlá {nome}!\n\nSeu código de acesso é: {token}\n\n⏰ Este código expira em 5 minutos.\n\nNão compartilhe este código com ninguém."
-    results = send_message(body=message, numero_destino=telefone)
+    results = send_message(message, numero_destino=telefone)
     return len(results) > 0 and results[0][1]  # Retorna True se enviado com sucesso
 
 def notify_admin_rca_login(nome, telefone, success=True):
@@ -107,7 +107,7 @@ def notify_admin_rca_login(nome, telefone, success=True):
     message += f"📱 **Telefone:** {telefone}\n"
     message += f"🕒 **Horário:** {timestamp}"
     
-    send_message(body=message, numero_destino=NUMERO_ADMIN)
+    send_message(message, numero_destino=NUMERO_ADMIN)
 
 def create_whatsapp_token(codusur, telefone, nome):
     """Cria e armazena um token WhatsApp para RCA"""
