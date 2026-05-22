@@ -42,7 +42,8 @@ def send_message(message, numbers=None, numero_destino=None):
     for number in numbers:
         payload = {
             "number": number,
-            "message": message
+            "message": message,
+            "createTicket": False
         }
         
         # Log do payload sendo enviado
