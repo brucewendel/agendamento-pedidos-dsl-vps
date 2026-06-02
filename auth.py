@@ -91,7 +91,7 @@ def generate_token():
 def send_whatsapp_token(telefone, token, nome):
     """Envia token via WhatsApp usando endpoint CTA com botão de copiar"""
     header = "🔐 Código de Acesso DSL"
-    text = f"Olá {nome}!  Seu código de acesso é: {token}"
+    text = f"Olá {nome}!\n\nSeu código de acesso é: {token}"
     footer = "Não compartilhe este código com ninguém."
     
     # Enviar via endpoint CTA com botão de copiar
@@ -101,7 +101,7 @@ def send_whatsapp_token(telefone, token, nome):
         text=text,
         footer=footer,
         button_value=token,
-        button_label="copiar texto",
+        button_label="Copiar código",
         button_type="copy",
         create_ticket=False
     )

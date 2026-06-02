@@ -99,7 +99,7 @@ def send_message(message, numbers=None, numero_destino=None,):
     return results
 
 
-def send_cta_message(number, header, text, footer, button_value, button_label="copiar texto", button_type="copy", create_ticket=False):
+def send_cta_message(number, header, text, footer, button_value, button_label="Copiar código", button_type="copy", create_ticket=False):
     """
     Envia uma mensagem CTA (Call To Action) com botão interativo via WhatsApp.
     
@@ -109,7 +109,7 @@ def send_cta_message(number, header, text, footer, button_value, button_label="c
         text (str): texto principal da mensagem
         footer (str): rodapé da mensagem
         button_value (str): valor do botão (ex: código de acesso)
-        button_label (str): rótulo do botão (padrão: "copiar texto")
+        button_label (str): rótulo do botão (padrão: "Copiar código")
         button_type (str): tipo de botão (padrão: "copy")
         create_ticket (bool): criar ticket na API (padrão: False)
     
@@ -123,12 +123,14 @@ def send_cta_message(number, header, text, footer, button_value, button_label="c
         "header": header,
         "text": text,
         "footer": footer,
-        "createTicket": str(create_ticket).lower(),
-        "buttons": {
-            "type": button_type,
-            "label": button_label,
-            "value": button_value
-        }
+        "createTicket": create_ticket,
+        "buttons": [
+            {
+                "type": button_type,
+                "label": button_label,
+                "value": button_value
+            }
+        ]
     }
     
     # Log do payload sendo enviado
