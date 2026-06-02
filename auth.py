@@ -11,7 +11,7 @@ from config import (
     API_URL, API_TOKEN, NUMERO_ADMIN
 )
 from database import get_usuario_by_id, get_usuario_pcempr_by_name, authenticate_pcempr_user, redis_client
-from enviarwpp import send_message
+from enviarwpp import send_message, send_cta_message
 
 def login_required(f):
     """Decorator para verificar se o usuário está logado"""
@@ -89,10 +89,24 @@ def generate_token():
 
 
 def send_whatsapp_token(telefone, token, nome):
-    """Envia token via WhatsApp"""
-    message = f"‎🔐 Código de Acesso DSL\n\nOlá {nome}!\n\nSeu código de acesso é: {token}\n\n⏰ Este código expira em 5 minutos.\n\nNão compartilhe este código com ninguém."
-    results = send_message(message, numero_destino=telefone)
-    return len(results) > 0 and results[0][1]  # Retorna True se enviado com sucesso
+    """Envia token via WhatsApp usando endpoint CTA com botão de copiar"""
+    header = "🔐 Código de Acesso DSL"
+    text = f"Olá {nome}!  Seu código de acesso é: {token}"
+    footer = "Não compartilhe este código com ninguém."
+    
+    # Enviar via endpoint CTA com botão de copiar
+    number, success, response = send_cta_message(
+        number=telefone,
+        header=header,
+        text=text,
+        footer=footer,
+        button_value=token,
+        button_label="copiar texto",
+        button_type="copy",
+        create_ticket=False
+    )
+    
+    return success  # Retorna True se enviado com sucesso
 
 def notify_admin_rca_login(nome, telefone, success=True):
     """Notifica o admin sobre tentativa de login de RCA"""
