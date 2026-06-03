@@ -724,9 +724,12 @@ def atualizar():
                 'message': 'Formato de data inválido'
             }), 400
         
+        ignorar_restricao_horario = session.get('user_type') == 'pcempr'
+
         # Atualiza no banco
         result = atualizar_agendamento(numped, preventrega, horaini, horafim, observacao,
-                                       is_admin=session.get('user_type') in ['admin', 'pcempr'])
+                                       is_admin=session.get('user_type') in ['admin', 'pcempr'],
+                                       ignorar_restricao_horario=ignorar_restricao_horario)
         
         if result.get('status') == 'success':
             return jsonify({
@@ -798,6 +801,8 @@ def atualizar_massa():
                 'message': 'Data inválida'
             }), 400
         
+        ignorar_restricao_horario = session.get('user_type') == 'pcempr'
+
         sucessos = 0
         erros = 0
         erros_agrupados = {}
@@ -807,7 +812,8 @@ def atualizar_massa():
             try:
                 # Atualiza no banco
                 result = atualizar_agendamento(numped, preventrega, horaini, horafim, observacao,
-                                               is_admin=session.get('user_type') in ['admin', 'pcempr'])
+                                               is_admin=session.get('user_type') in ['admin', 'pcempr'],
+                                               ignorar_restricao_horario=ignorar_restricao_horario)
                 
                 if result.get('status') == 'success':
                     sucessos += 1

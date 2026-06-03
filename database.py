@@ -512,21 +512,35 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
         if connection:
             release_connection(connection)
 
-def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observacao, is_admin=False):
-    """Insere um novo agendamento na tabela DSLTI_PEDAGEND com validações de data"""
-    from datetime import datetime, timedelta
-    
-    # Validação de horário: bloquear agendamentos entre 17:20 e 20h
+def validar_restricao_horario_agendamento(ignorar_restricao_horario=False):
+    """Valida a janela de bloqueio para agendamento."""
+    from datetime import datetime
+
+    if ignorar_restricao_horario:
+        return None
+
     hora_atual = datetime.now().time()
     hora_inicio_bloqueio = datetime.strptime('17:20', '%H:%M').time()
     hora_fim_bloqueio = datetime.strptime('20:00', '%H:%M').time()
-    
+
     if hora_inicio_bloqueio <= hora_atual < hora_fim_bloqueio:
         hora_formatada = hora_atual.strftime('%H:%M')
         return {
-            'status': 'error', 
+            'status': 'error',
             'message': f'Agendamentos só podem ser realizados após às 20h. Horário atual: {hora_formatada}'
         }
+
+    return None
+
+
+def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, observacao, is_admin=False,
+                          ignorar_restricao_horario=False):
+    """Insere um novo agendamento na tabela DSLTI_PEDAGEND com validações de data"""
+    from datetime import datetime, timedelta
+
+    restricao_horario = validar_restricao_horario_agendamento(ignorar_restricao_horario)
+    if restricao_horario:
+        return restricao_horario
     
     # Obter nome do usuário da aplicação para auditoria
     app_user = get_app_user_name()
@@ -610,24 +624,17 @@ def atualizar_agendamento(numped, preventrega_str, horaini_str, horafim_str, obs
         if connection:
             release_connection(connection)
 
-def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, horafim_str, observacao, is_admin=False):
+def atualizar_agendamento_massa(numpeds_list, preventrega_str, horaini_str, horafim_str, observacao, is_admin=False,
+                                ignorar_restricao_horario=False):
     """Insere múltiplos agendamentos na tabela DSLTI_PEDAGEND com validações de data"""
     from datetime import datetime, timedelta
     
     if not numpeds_list:
         return {'status': 'error', 'message': 'Nenhum pedido foi selecionado.'}
-    
-    # Validação de horário: bloquear agendamentos entre 17:20 e 20h
-    hora_atual = datetime.now().time()
-    hora_inicio_bloqueio = datetime.strptime('17:20', '%H:%M').time()
-    hora_fim_bloqueio = datetime.strptime('20:00', '%H:%M').time()
-    
-    if hora_inicio_bloqueio <= hora_atual < hora_fim_bloqueio:
-        hora_formatada = hora_atual.strftime('%H:%M')
-        return {
-            'status': 'error', 
-            'message': f'Agendamentos só podem ser realizados após às 20h. Horário atual: {hora_formatada}'
-        }
+
+    restricao_horario = validar_restricao_horario_agendamento(ignorar_restricao_horario)
+    if restricao_horario:
+        return restricao_horario
     
     # Obter nome do usuário da aplicação para auditoria
     app_user = get_app_user_name()
