@@ -5,7 +5,7 @@ import redis
 from flask import session
 from contextlib import contextmanager
 from functools import wraps
-from config import DB_USER, DB_PASSWORD, DB_DSN, REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
+from config import DB_USER, DB_PASSWORD, DB_DSN, DB_DSN_LIST, REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
 
 # Usando oracledb (compatível com cx_Oracle) para Oracle Database
 # Modo thick necessário para suportar password verifier do Oracle DB
@@ -37,6 +37,8 @@ except Exception as e:
 # CONNECTION POOL ORACLE - OTIMIZAÇÃO PERFORMANCE
 # ============================================
 pool = None
+active_dsn = DB_DSN
+active_dsn_index = 0
 
 def init_pool():
     """Inicializa o pool de conexões Oracle"""
@@ -68,6 +70,112 @@ def release_connection(connection):
             pool.release(connection)
         except Exception as e:
             print(f"Aviso: Erro ao devolver conexão ao pool: {e}")
+
+def get_dsn_candidates():
+    """Retorna a lista de DSNs disponiveis para conexao."""
+    if DB_DSN_LIST:
+        return DB_DSN_LIST
+    return [DB_DSN] if DB_DSN else []
+
+def close_pool():
+    """Fecha o pool atual para permitir recriacao em outro host."""
+    global pool
+    if pool is not None:
+        try:
+            pool.close(force=True)
+        except Exception as e:
+            print(f"Aviso: erro ao fechar pool Oracle atual: {e}")
+        finally:
+            pool = None
+
+def init_pool(force_reconnect=False):
+    """Inicializa o pool de conexoes Oracle com failover entre DSNs."""
+    global pool, active_dsn, active_dsn_index
+
+    dsn_candidates = get_dsn_candidates()
+    if not dsn_candidates:
+        print("Nenhum DSN Oracle configurado no ambiente.")
+        pool = None
+        active_dsn = None
+        return None
+
+    if force_reconnect:
+        close_pool()
+
+    if pool is not None:
+        return pool
+
+    for offset in range(len(dsn_candidates)):
+        dsn_index = (active_dsn_index + offset) % len(dsn_candidates)
+        dsn = dsn_candidates[dsn_index]
+
+        try:
+            pool = cx_Oracle.SessionPool(
+                user=DB_USER,
+                password=DB_PASSWORD,
+                dsn=dsn,
+                min=2,
+                max=10,
+                increment=1,
+                threaded=True,
+                getmode=cx_Oracle.SPOOL_ATTRVAL_WAIT,
+                encoding="UTF-8"
+            )
+            active_dsn = dsn
+            active_dsn_index = dsn_index
+            print(f"Pool Oracle inicializado com sucesso usando {dsn}")
+            return pool
+        except Exception as e:
+            print(f"Falha ao criar pool Oracle usando {dsn}: {e}")
+            pool = None
+
+    print("Nao foi possivel inicializar o pool Oracle em nenhum host configurado.")
+    return None
+
+def release_connection(connection):
+    """Devolve conexao ao pool ou fecha conexao direta."""
+    global pool
+    if not connection:
+        return
+
+    if pool:
+        try:
+            pool.release(connection)
+            return
+        except Exception as e:
+            print(f"Aviso: Erro ao devolver conexao ao pool: {e}")
+
+    try:
+        connection.close()
+    except Exception as e:
+        print(f"Aviso: Erro ao fechar conexao Oracle: {e}")
+
+def create_direct_connection():
+    """Tenta conexao direta em todos os DSNs configurados."""
+    global active_dsn, active_dsn_index
+
+    dsn_candidates = get_dsn_candidates()
+    if not dsn_candidates:
+        return None
+
+    for offset in range(len(dsn_candidates)):
+        dsn_index = (active_dsn_index + offset) % len(dsn_candidates)
+        dsn = dsn_candidates[dsn_index]
+
+        try:
+            connection = cx_Oracle.connect(
+                user=DB_USER,
+                password=DB_PASSWORD,
+                dsn=dsn
+            )
+            active_dsn = dsn
+            active_dsn_index = dsn_index
+            print(f"Conexao Oracle direta estabelecida usando {dsn}")
+            return connection
+        except Exception as e:
+            print(f"Falha na conexao direta Oracle usando {dsn}: {e}")
+
+    return None
 
 @contextmanager
 def get_db_connection(app_user=None):
@@ -163,6 +271,47 @@ def get_connection(app_user=None):
             except Exception as e:
                 print(f"Aviso: Não foi possível definir CLIENT_IDENTIFIER: {e}")
         
+        return connection
+    except Exception as e:
+        print(f"Erro ao conectar com o banco: {e}")
+        return None
+
+def get_connection(app_user=None):
+    """ObtÃ©m uma conexÃ£o Oracle com failover automÃ¡tico entre os DSNs configurados.
+    
+    Args:
+        app_user: Nome do usuÃ¡rio da aplicaÃ§Ã£o (PCEMPR ou RCA) para auditoria
+    """
+    global pool
+    connection = None
+
+    try:
+        if pool is None:
+            init_pool()
+
+        if pool:
+            try:
+                connection = pool.acquire()
+            except Exception as e:
+                print(f"Falha ao adquirir conexao do pool Oracle atual: {e}")
+                init_pool(force_reconnect=True)
+                if pool:
+                    connection = pool.acquire()
+
+        if not connection:
+            connection = create_direct_connection()
+
+        if app_user and connection:
+            try:
+                cursor = connection.cursor()
+                cursor.execute(
+                    "BEGIN DBMS_SESSION.SET_IDENTIFIER(:app_user); END;",
+                    {'app_user': app_user}
+                )
+                cursor.close()
+            except Exception as e:
+                print(f"Aviso: Nao foi possivel definir CLIENT_IDENTIFIER: {e}")
+
         return connection
     except Exception as e:
         print(f"Erro ao conectar com o banco: {e}")

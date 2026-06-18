@@ -5,10 +5,34 @@ from dotenv import load_dotenv
 # Carrega as variáveis do arquivo .env para o ambiente
 load_dotenv()
 
+def _parse_db_dsn_list():
+    """Monta uma lista ordenada de DSNs para failover."""
+    db_port = os.getenv("DB_PORT", "").strip()
+    db_service_name = os.getenv("DB_SERVICE_NAME", "").strip()
+
+    dsn_list = []
+
+    db_hosts = os.getenv("DB_HOSTS", "").strip()
+    if db_hosts and db_port and db_service_name:
+        hosts = [host.strip() for host in db_hosts.split(",") if host.strip()]
+        dsn_list.extend(f"{host}:{db_port}/{db_service_name}" for host in hosts)
+    elif db_port and db_service_name:
+        for env_name in ("DB_HOST_1", "DB_HOST_2", "DB_HOST_3"):
+            host = os.getenv(env_name, "").strip()
+            if host:
+                dsn_list.append(f"{host}:{db_port}/{db_service_name}")
+
+    legacy_dsn = os.getenv("DB_DSN", "").strip()
+    if legacy_dsn and legacy_dsn not in dsn_list:
+        dsn_list.append(legacy_dsn)
+
+    return dsn_list
+
 # --- Configurações de Banco de Dados ---
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_DSN = os.getenv("DB_DSN")
+DB_DSN_LIST = _parse_db_dsn_list()
+DB_DSN = DB_DSN_LIST[0] if DB_DSN_LIST else None
 
 # --- Configurações da Aplicação ---
 FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY")

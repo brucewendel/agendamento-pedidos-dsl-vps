@@ -34,7 +34,10 @@ FLASK_DEBUG=False
 
 DB_USER=usuario_oracle
 DB_PASSWORD=senha_oracle
-DB_DSN=host:porta/service
+DB_PORT=1521
+DB_SERVICE_NAME=DSL
+DB_HOSTS=200.150.131.218,201.20.76.123,200.209.10.130
+DB_DSN=
 
 API_URL=https://api.exemplo.com
 API_TOKEN=token_whatsapp

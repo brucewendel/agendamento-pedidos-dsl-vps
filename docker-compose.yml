@@ -37,4 +37,3 @@ services:
 networks:
   agendamento-dsl:
     driver: bridge
-
