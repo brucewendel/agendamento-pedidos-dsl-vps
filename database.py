@@ -542,7 +542,7 @@ def get_usuario_by_id(codusur):
         }
     return None
 
-def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=None, data_ate=None, offset=0, per_page=25, codcli_filtro=None):
+def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=None, data_ate=None, offset=0, per_page=25, codcli_filtro=None, filtro_rca=None):
     """Obtém agendamentos confirmados com junção completa incluindo status de entrega"""
     connection = get_connection()
     if not connection:
@@ -557,6 +557,7 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
             FROM DSLTI_PEDAGEND a 
             INNER JOIN PCPEDC p ON a.NUMPED = p.NUMPED 
             INNER JOIN PCCLIENT c ON p.CODCLI = c.CODCLI 
+            LEFT JOIN PCUSUARI u ON p.CODUSUR = u.CODUSUR
             WHERE a.PREVENTREGA IS NOT NULL
         """
         params_count = {}
@@ -593,13 +594,15 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
                 END AS STATUS_ENTREGA
             FROM
                 DSLTI_PEDAGEND a
-            INNER JOIN
-                PCPEDC p ON a.NUMPED = p.NUMPED
-            INNER JOIN
-                PCCLIENT c ON p.CODCLI = c.CODCLI
-            LEFT JOIN
-                UltimoEvento ue ON ue.seq_pedido_erp = TO_CHAR(p.NUMPED) AND ue.carga_formada_erp = TO_CHAR(p.NUMCAR) AND ue.rn = 1
-            LEFT JOIN
+             INNER JOIN
+                 PCPEDC p ON a.NUMPED = p.NUMPED
+             INNER JOIN
+                 PCCLIENT c ON p.CODCLI = c.CODCLI
+             LEFT JOIN
+                 PCUSUARI u ON p.CODUSUR = u.CODUSUR
+             LEFT JOIN
+                 UltimoEvento ue ON ue.seq_pedido_erp = TO_CHAR(p.NUMPED) AND ue.carga_formada_erp = TO_CHAR(p.NUMCAR) AND ue.rn = 1
+             LEFT JOIN
                 EventoEntrega ee ON ee.seq_pedido_erp = TO_CHAR(p.NUMPED) AND ee.carga_formada_erp = TO_CHAR(p.NUMCAR)
             WHERE
                 a.PREVENTREGA IS NOT NULL
@@ -637,6 +640,14 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
             sql_confirmados += " AND p.CODCLI = :codcli"
             params_count['codcli'] = int(codcli_filtro)
             params_confirmados['codcli'] = int(codcli_filtro)
+
+        if filtro_rca:
+            sql_count += " AND (UPPER(u.NOME) LIKE UPPER(:filtro_rca_nome) OR CAST(p.CODUSUR AS VARCHAR2(20)) LIKE :filtro_rca_cod)"
+            sql_confirmados += " AND (UPPER(u.NOME) LIKE UPPER(:filtro_rca_nome) OR CAST(p.CODUSUR AS VARCHAR2(20)) LIKE :filtro_rca_cod)"
+            params_count['filtro_rca_nome'] = f'%{filtro_rca}%'
+            params_count['filtro_rca_cod'] = f'%{filtro_rca}%'
+            params_confirmados['filtro_rca_nome'] = f'%{filtro_rca}%'
+            params_confirmados['filtro_rca_cod'] = f'%{filtro_rca}%'
         
         # Executar contagem
         cursor.execute(sql_count, params_count)

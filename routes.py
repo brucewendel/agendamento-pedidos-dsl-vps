@@ -477,6 +477,7 @@ def painel():
             data_de_confirmados = request.args.get('data_de_confirmados')
             data_ate_confirmados = request.args.get('data_ate_confirmados')
             codcli_confirmados = request.args.get('codcli_confirmados')
+            rca_confirmados = request.args.get('rca_confirmados')
             
             agendamentos_result = get_agendamentos_confirmados(
                 codigo_rca=codigo_rca,
@@ -485,7 +486,8 @@ def painel():
                 data_ate=data_ate_confirmados,
                 offset=offset,
                 per_page=per_page,
-                codcli_filtro=codcli_confirmados
+                codcli_filtro=codcli_confirmados,
+                filtro_rca=rca_confirmados
             )
             
             if isinstance(agendamentos_result, tuple):
@@ -626,7 +628,8 @@ def listar_painel():
             result = get_agendamentos_confirmados(codigo_rca, request.args.get('numped_confirmados'),
                                                  request.args.get('data_de_confirmados'), 
                                                  request.args.get('data_ate_confirmados'), offset_confirmados, per_page_confirmados,
-                                                 codcli_filtro=request.args.get('codcli_confirmados'))
+                                                 codcli_filtro=request.args.get('codcli_confirmados'),
+                                                 filtro_rca=request.args.get('rca_confirmados'))
             agendamentos, total_agendamentos = result if isinstance(result, tuple) else (result, len(result or []))
         elif active_tab == 'usuarios':
             usuarios = get_usuarios(request.args.get('rca'), request.args.get('supervisor'))
@@ -1192,8 +1195,9 @@ def relatorio():
         data_de_confirmados = request.args.get('data_de_confirmados')
         data_ate_confirmados = request.args.get('data_ate_confirmados')
         codcli_confirmados = request.args.get('codcli_confirmados')
+        rca_confirmados = request.args.get('rca_confirmados')
         
-        print(f"[RELATORIO] Filtros - Numped: {numped_confirmados}, Data De: {data_de_confirmados}, Data Ate: {data_ate_confirmados}, CodCli: {codcli_confirmados}")
+        print(f"[RELATORIO] Filtros - Numped: {numped_confirmados}, Data De: {data_de_confirmados}, Data Ate: {data_ate_confirmados}, CodCli: {codcli_confirmados}, RCA: {rca_confirmados}")
         print(f"[RELATORIO] Paginacao - Page: {page_confirmados}, Per Page: {per_page_confirmados}, Offset: {offset_confirmados}")
         
         # Buscar agendamentos confirmados
@@ -1204,7 +1208,8 @@ def relatorio():
             data_ate=data_ate_confirmados,
             offset=offset_confirmados,
             per_page=per_page_confirmados,
-            codcli_filtro=codcli_confirmados
+            codcli_filtro=codcli_confirmados,
+            filtro_rca=rca_confirmados
         )
         
         if isinstance(agendamentos_result, tuple):

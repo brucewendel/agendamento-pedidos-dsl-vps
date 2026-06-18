@@ -31,4 +31,4 @@ COPY rate_limit_config.py .
 COPY templates/ ./templates/
 COPY static/ ./static/
 
-CMD ["gunicorn", "--bind", "0.0.0.0:6000", "--workers", "4", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "--capture-output", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:6000", "--workers", "4", "--timeout", "60", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "--capture-output", "app:app"]

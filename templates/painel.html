@@ -1946,6 +1946,10 @@
                             <input type="text" class="form-input" name="codcli_confirmados" value="{{ request.args.get('codcli_confirmados', '') }}" placeholder="Ex: 12345">
                         </div>
                         <div class="form-group">
+                            <label class="form-label">RCA</label>
+                            <input type="text" class="form-input" name="rca_confirmados" value="{{ request.args.get('rca_confirmados', '') }}" placeholder="Nome ou cÃ³digo do RCA">
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Entrega (De)</label>
                             <input type="date" class="form-input" name="data_de_confirmados" value="{{ request.args.get('data_de_confirmados', '') }}">
                         </div>
@@ -2097,8 +2101,8 @@
                         {% if pagination_confirmados.pages > 1 %}
                         <div class="pagination-nav" style="display: flex; gap: 4px;">
                             {% if pagination_confirmados.page > 1 %}
-                            <a href="{{ url_for('main.relatorio' if request.path == '/relatorio' else 'main.listar_painel', active_tab='confirmados', page_confirmados=1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Primeira</a>
-                                <a href="{{ url_for('main.relatorio' if request.path == '/relatorio' else 'main.listar_painel', active_tab='confirmados', page_confirmados=pagination_confirmados.page-1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Anterior</a>
+                            <a href="{{ url_for('main.relatorio' if request.path == '/relatorio' else 'main.listar_painel', active_tab='confirmados', page_confirmados=1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), rca_confirmados=request.args.get('rca_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Primeira</a>
+                                <a href="{{ url_for('main.relatorio' if request.path == '/relatorio' else 'main.listar_painel', active_tab='confirmados', page_confirmados=pagination_confirmados.page-1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), rca_confirmados=request.args.get('rca_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Anterior</a>
                             {% endif %}
                             
                             <span style="padding: 6px 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; color: #374151;">{{ pagination_confirmados.page }} de {{ pagination_confirmados.pages }}</span>
@@ -3486,6 +3490,7 @@
             
             // Inicializar funcionalidade de edição de telefone
             initEditPhoneFunctionality();
+            preserveConfirmadosFiltersInPagination();
         });
         
         // Funções de paginação
@@ -3503,6 +3508,22 @@
             url.searchParams.set('page_confirmados', '1'); // Resetar para primeira página
             url.searchParams.set('active_tab', 'confirmados');
             window.location.href = url.toString();
+        }
+        function preserveConfirmadosFiltersInPagination() {
+            const url = new URL(window.location.href);
+            const rcaConfirmados = url.searchParams.get('rca_confirmados');
+
+            if (!rcaConfirmados) {
+                return;
+            }
+
+            document.querySelectorAll('.pagination-nav a').forEach((link) => {
+                const linkUrl = new URL(link.href, window.location.origin);
+                if (linkUrl.searchParams.get('active_tab') === 'confirmados' && !linkUrl.searchParams.get('rca_confirmados')) {
+                    linkUrl.searchParams.set('rca_confirmados', rcaConfirmados);
+                    link.href = linkUrl.toString();
+                }
+            });
         }
     </script>
     
