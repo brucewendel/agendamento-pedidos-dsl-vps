@@ -8,6 +8,7 @@
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#3b82f6">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DSL Agendamento">
@@ -29,7 +30,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ux-improvements.css') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-3.6.0.min.js"></script>
     
     <!-- UX/UI Enhancements JS -->
     <script src="{{ url_for('static', filename='js/ux-enhancements.js') }}"></script>
@@ -1557,7 +1558,7 @@
         <!-- Header -->
         <div class="header">
             <div class="logo-container">
-                <img src="https://tecnologiadsl.com.br/wp-content/uploads/2025/08/DSL-scaled.png" alt="DSL Logo" class="logo-img">
+                <img src="{{ url_for('static', filename='img/dsl_logo.svg') }}" alt="DSL Logo" class="logo-img">
             </div>
             <div class="header-nav">
                 <div class="tab-nav-header">
@@ -1822,8 +1823,6 @@
                 </div>
                 
                 <div class="table-container">
-                    <!-- DEBUG: Active tab = {{ active_tab }} -->
-                    <!-- DEBUG: Pedidos pendentes length = {{ pedidos_pendentes|length }} -->
                     <table>
                         <thead>
                             <tr>
@@ -1839,9 +1838,7 @@
                             </tr>
                         </thead>
                         <tbody id="tbody-pendentes">
-                            <!-- DEBUG: Iniciando renderização com {{ pedidos_pendentes|length }} pedidos -->
                             {% for pedido in pedidos_pendentes %}
-                            <!-- DEBUG: Renderizando pedido {{ pedido['NUMPED'] }} -->
                             <tr class="clickable-row" data-numped="{{ pedido['NUMPED'] }}">
                                 <td onclick="event.stopPropagation();">
                                     <input type="checkbox" class="pedido-checkbox" value="{{ pedido['NUMPED'] }}">
@@ -1854,14 +1851,13 @@
                                 <td>{{ pedido['NUMCAR'] | none_to_dash }}</td>
                                 <td>{{ pedido['DATA'].strftime('%d/%m/%Y') if pedido['DATA'] else '-' }}</td>
                                 <td onclick="event.stopPropagation();">
-                                    <button class="btn btn-primary" onclick="abrirModal({{ pedido['NUMPED'] }}, '{{ pedido['DATA'].strftime('%Y-%m-%d') if pedido['DATA'] else '' }}')">
+                                    <button class="btn btn-primary" onclick='abrirModal({{ pedido["NUMPED"]|tojson }}, {{ (pedido["DATA"].strftime("%Y-%m-%d") if pedido["DATA"] else "")|tojson }})'>
                                         <i class="bi bi-calendar-plus"></i>
                                         Agendar
                                     </button>
                                 </td>
                             </tr>
                             {% else %}
-                            <!-- DEBUG: Nenhum pedido encontrado, exibindo mensagem -->
                             <tr>
                                 <td colspan="9" style="text-align: center; padding: 20px; color: var(--dark-gray);">
                                     <i class="bi bi-inbox" style="font-size: 1.5rem; margin-bottom: 6px; display: block;"></i>
@@ -1869,7 +1865,6 @@
                                 </td>
                             </tr>
                             {% endfor %}
-                            <!-- DEBUG: Finalizando renderização -->
                         </tbody>
                     </table>
                 </div>
@@ -1890,10 +1885,10 @@
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <label style="font-size: 14px; color: #6b7280;">Registros por página:</label>
                             <select id="perPageSelect" onchange="changePerPage(this.value)" style="padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;">
-                                <option value="25" {{ 'selected' if pagination.per_page == 25 else '' }}>25</option>
-                                <option value="50" {{ 'selected' if pagination.per_page == 50 else '' }}>50</option>
-                                <option value="75" {{ 'selected' if pagination.per_page == 75 else '' }}>75</option>
-                                <option value="100" {{ 'selected' if pagination.per_page == 100 else '' }}>100</option>
+                                <option value="25"{% if pagination.per_page == 25 %} selected{% endif %}>25</option>
+                                <option value="50"{% if pagination.per_page == 50 %} selected{% endif %}>50</option>
+                                <option value="75"{% if pagination.per_page == 75 %} selected{% endif %}>75</option>
+                                <option value="100"{% if pagination.per_page == 100 %} selected{% endif %}>100</option>
                             </select>
                         </div>
                         
@@ -1901,19 +1896,15 @@
                         {% if pagination.pages > 1 %}
                         <div class="pagination-nav" style="display: flex; gap: 4px;">
                             {% if pagination.page > 1 %}
-                            {% set args_without_page = request.args.copy() %}
-                            {% set _ = args_without_page.pop('page', None) %}
-                            <a href="{{ url_for('main.listar_painel', page=1, **args_without_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Primeira</a>
-                                <a href="{{ url_for('main.listar_painel', page=pagination.page-1, **args_without_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Anterior</a>
+                            <a href="{{ url_for('main.listar_painel', active_tab='pendentes', page=1, per_page=pagination.per_page, numped_pendentes=request.args.get('numped_pendentes', ''), data_pedido_pendentes=request.args.get('data_pedido_pendentes', ''), codigo_cliente_pendentes=request.args.get('codigo_cliente_pendentes', ''), codigo_rca_pendentes=request.args.get('codigo_rca_pendentes', '')) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Primeira</a>
+                                <a href="{{ url_for('main.listar_painel', active_tab='pendentes', page=pagination.page-1, per_page=pagination.per_page, numped_pendentes=request.args.get('numped_pendentes', ''), data_pedido_pendentes=request.args.get('data_pedido_pendentes', ''), codigo_cliente_pendentes=request.args.get('codigo_cliente_pendentes', ''), codigo_rca_pendentes=request.args.get('codigo_rca_pendentes', '')) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Anterior</a>
                             {% endif %}
                             
                             <span style="padding: 6px 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; color: #374151;">{{ pagination.page }} de {{ pagination.pages }}</span>
                             
                             {% if pagination.page < pagination.pages %}
-                            {% set args_without_page = request.args.copy() %}
-                            {% set _ = args_without_page.pop('page', None) %}
-                            <a href="{{ url_for('main.listar_painel', page=pagination.page+1, **args_without_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Próxima</a>
-                                <a href="{{ url_for('main.listar_painel', page=pagination.pages, **args_without_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Última</a>
+                            <a href="{{ url_for('main.listar_painel', active_tab='pendentes', page=pagination.page+1, per_page=pagination.per_page, numped_pendentes=request.args.get('numped_pendentes', ''), data_pedido_pendentes=request.args.get('data_pedido_pendentes', ''), codigo_cliente_pendentes=request.args.get('codigo_cliente_pendentes', ''), codigo_rca_pendentes=request.args.get('codigo_rca_pendentes', '')) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Próxima</a>
+                                <a href="{{ url_for('main.listar_painel', active_tab='pendentes', page=pagination.pages, per_page=pagination.per_page, numped_pendentes=request.args.get('numped_pendentes', ''), data_pedido_pendentes=request.args.get('data_pedido_pendentes', ''), codigo_cliente_pendentes=request.args.get('codigo_cliente_pendentes', ''), codigo_rca_pendentes=request.args.get('codigo_rca_pendentes', '')) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Última</a>
                             {% endif %}
                         </div>
                         {% endif %}
@@ -2055,7 +2046,7 @@
                                 </td>
                                 {% if is_admin %}
                                 <td onclick="event.stopPropagation();">
-                                    <button class="btn btn-success" onclick="abrirModalEdicao({{ agendamento.NUMPED }}, '{{ agendamento.PREVENTREGA.strftime('%Y-%m-%d') if agendamento.PREVENTREGA else '' }}', '{{ agendamento.HORAINI[:5] if agendamento.HORAINI else '' }}', '{{ agendamento.HORAFIM[:5] if agendamento.HORAFIM else '' }}', '{{ agendamento.OBSERVACAO if agendamento.OBSERVACAO else '' }}')">
+                                    <button class="btn btn-success" onclick='abrirModalEdicao({{ agendamento.NUMPED|tojson }}, {{ (agendamento.PREVENTREGA.strftime("%Y-%m-%d") if agendamento.PREVENTREGA else "")|tojson }}, {{ (agendamento.HORAINI[:5] if agendamento.HORAINI else "")|tojson }}, {{ (agendamento.HORAFIM[:5] if agendamento.HORAFIM else "")|tojson }}, {{ (agendamento.OBSERVACAO if agendamento.OBSERVACAO else "")|tojson }})'>
                                         <i class="bi bi-pencil-square"></i>
                                         Editar
                                     </button>
@@ -2090,26 +2081,31 @@
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <label style="font-size: 14px; color: #6b7280;">Registros por página:</label>
                             <select id="perPageSelectConfirmados" onchange="changePerPageConfirmados(this.value)" style="padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;">
-                                <option value="25" {{ 'selected' if pagination_confirmados.per_page == 25 else '' }}>25</option>
-                                <option value="50" {{ 'selected' if pagination_confirmados.per_page == 50 else '' }}>50</option>
-                                <option value="75" {{ 'selected' if pagination_confirmados.per_page == 75 else '' }}>75</option>
-                                <option value="100" {{ 'selected' if pagination_confirmados.per_page == 100 else '' }}>100</option>
+                                <option value="25"{% if pagination_confirmados.per_page == 25 %} selected{% endif %}>25</option>
+                                <option value="50"{% if pagination_confirmados.per_page == 50 %} selected{% endif %}>50</option>
+                                <option value="75"{% if pagination_confirmados.per_page == 75 %} selected{% endif %}>75</option>
+                                <option value="100"{% if pagination_confirmados.per_page == 100 %} selected{% endif %}>100</option>
                             </select>
                         </div>
                         
                         <!-- Navegação de páginas -->
                         {% if pagination_confirmados.pages > 1 %}
+                        {% if request.path == '/relatorio' %}
+                        {% set confirmados_endpoint = 'main.relatorio' %}
+                        {% else %}
+                        {% set confirmados_endpoint = 'main.listar_painel' %}
+                        {% endif %}
                         <div class="pagination-nav" style="display: flex; gap: 4px;">
                             {% if pagination_confirmados.page > 1 %}
-                            <a href="{{ url_for('main.relatorio' if request.path == '/relatorio' else 'main.listar_painel', active_tab='confirmados', page_confirmados=1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), rca_confirmados=request.args.get('rca_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Primeira</a>
-                                <a href="{{ url_for('main.relatorio' if request.path == '/relatorio' else 'main.listar_painel', active_tab='confirmados', page_confirmados=pagination_confirmados.page-1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), rca_confirmados=request.args.get('rca_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Anterior</a>
+                            <a href="{{ url_for(confirmados_endpoint, active_tab='confirmados', page_confirmados=1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), rca_confirmados=request.args.get('rca_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Primeira</a>
+                                <a href="{{ url_for(confirmados_endpoint, active_tab='confirmados', page_confirmados=pagination_confirmados.page-1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), rca_confirmados=request.args.get('rca_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Anterior</a>
                             {% endif %}
                             
                             <span style="padding: 6px 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; color: #374151;">{{ pagination_confirmados.page }} de {{ pagination_confirmados.pages }}</span>
                             
                             {% if pagination_confirmados.page < pagination_confirmados.pages %}
-                            <a href="{{ url_for('main.relatorio' if request.path == '/relatorio' else 'main.listar_painel', active_tab='confirmados', page_confirmados=pagination_confirmados.page+1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Próxima</a>
-                                <a href="{{ url_for('main.relatorio' if request.path == '/relatorio' else 'main.listar_painel', active_tab='confirmados', page_confirmados=pagination_confirmados.pages, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Última</a>
+                            <a href="{{ url_for(confirmados_endpoint, active_tab='confirmados', page_confirmados=pagination_confirmados.page+1, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), rca_confirmados=request.args.get('rca_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Próxima</a>
+                                <a href="{{ url_for(confirmados_endpoint, active_tab='confirmados', page_confirmados=pagination_confirmados.pages, numped_confirmados=request.args.get('numped_confirmados', ''), codcli_confirmados=request.args.get('codcli_confirmados', ''), rca_confirmados=request.args.get('rca_confirmados', ''), data_de_confirmados=request.args.get('data_de_confirmados', ''), data_ate_confirmados=request.args.get('data_ate_confirmados', ''), per_page_confirmados=pagination_confirmados.per_page) }}" class="pagination-btn" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; font-size: 14px;">Última</a>
                             {% endif %}
                         </div>
                         {% endif %}
@@ -2547,8 +2543,6 @@
                     return response.json();
                 })
                 .then(response => {
-                    console.log('Resposta da API KPIs:', response);
-                    
                     if (response.success && response.data) {
                         const kpis = response.data;
                         
@@ -2568,8 +2562,6 @@
                                 if (elemento) elemento.textContent = kpi.valor;
                             }
                         });
-                        
-                        console.log('KPIs carregados com sucesso:', kpis);
                     } else {
                         console.error('Erro na resposta da API:', response);
                         // Manter valores padrão se não houver dados
@@ -2709,7 +2701,6 @@
         function carregarGraficos() {
             // Evitar múltiplas chamadas simultâneas
             if (carregandoGraficos) {
-                console.log('Gráficos já estão sendo carregados...');
                 return;
             }
             
@@ -2728,8 +2719,6 @@
                     return response.json();
                 })
                 .then(response => {
-                    console.log('Resposta da API gráficos:', response);
-                    
                     if (response.success && response.data && typeof Plotly !== 'undefined') {
                         const data = response.data;
                         
@@ -3274,16 +3263,6 @@
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
-            // DEBUG: Verificar se tbody existe e tem conteúdo
-            const tbodyPendentes = document.getElementById('tbody-pendentes');
-            if (tbodyPendentes) {
-                console.log('DEBUG: tbody-pendentes encontrado');
-                console.log('DEBUG: Número de linhas no tbody:', tbodyPendentes.children.length);
-                console.log('DEBUG: Conteúdo do tbody:', tbodyPendentes.innerHTML.substring(0, 200) + '...');
-            } else {
-                console.log('DEBUG: tbody-pendentes NÃO encontrado');
-            }
-            
             // Carregar KPIs e gráficos automaticamente
             carregarKPIs();
             carregarGraficos();
@@ -3485,7 +3464,6 @@
             const usuariosTab = document.getElementById('usuarios');
             if (usuariosTab && usuariosTab.classList.contains('active')) {
                 // Os dados já estão carregados pelo template
-                console.log('Aba de usuários ativa - dados carregados pelo template');
             }
             
             // Inicializar funcionalidade de edição de telefone

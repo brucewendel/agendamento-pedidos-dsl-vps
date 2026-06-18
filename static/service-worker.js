@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dsl-agendamento-v1.0.1';
+const CACHE_NAME = 'dsl-agendamento-v1.0.2';
 const OFFLINE_URL = '/offline';
 
 const PRECACHE_ASSETS = [
@@ -10,7 +10,7 @@ const PRECACHE_ASSETS = [
     'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
     'https://cdn.jsdelivr.net/npm/sweetalert2@11',
-    'https://cdn.plot.ly/plotly-latest.min.js'
+    'https://cdn.plot.ly/plotly-3.6.0.min.js'
 ];
 
 self.addEventListener('install', (event) => {
