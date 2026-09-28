@@ -7,3 +7,4 @@ main.spec/
 *.egg-info/
 *.log
 .env
+CLAUDE.md

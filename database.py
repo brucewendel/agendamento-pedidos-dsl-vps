@@ -579,7 +579,7 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
                     e.seq_pedido_erp,
                     MAX(e.DATA_REGISTRO) as data_entrega
                 FROM FUSIONT.FUSIONTRAK_INT_EVENTOS e
-                WHERE e.tipo = 7
+                WHERE e.tipo = '7'
                 GROUP BY e.carga_formada_erp, e.seq_pedido_erp
             )
             SELECT

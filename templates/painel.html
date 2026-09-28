@@ -3114,8 +3114,26 @@
             });
         }
 
-        // Função para abrir tabs (otimizada - sem reload da página)
+        // O backend só carrega os dados da aba ativa no momento da requisição
+        // (ver rota /listar_painel). Abas que ainda não tiveram seus dados
+        // buscados pelo servidor nesta navegação precisam de um reload real.
+        const initialActiveTab = "{{ active_tab }}";
+        window.tabsCarregadas = window.tabsCarregadas || { [initialActiveTab]: true };
+
+        // Função para abrir tabs (sem reload quando os dados já foram carregados)
         function openTab(evt, tabName) {
+            const newUrl = tabName === 'dashboard'
+                ? '/painel?active_tab=dashboard'
+                : '/listar_painel?active_tab=' + tabName;
+
+            // Dashboard carrega seus dados via AJAX (carregarKPIs/carregarGraficos);
+            // as demais abas (pendentes, confirmados, usuarios) só têm dados no HTML
+            // se foram a aba ativa no carregamento da página - senão, navega de fato.
+            if (tabName !== 'dashboard' && !window.tabsCarregadas[tabName]) {
+                window.location.href = newUrl;
+                return;
+            }
+
             // Ocultar todas as abas
             const tabContents = document.getElementsByClassName('tab-content');
             for (let i = 0; i < tabContents.length; i++) {
@@ -3137,9 +3155,6 @@
             }
             
             // Atualizar URL sem recarregar a página
-            const newUrl = tabName === 'dashboard' 
-                ? '/painel?active_tab=dashboard'
-                : '/listar_painel?active_tab=' + tabName;
             window.history.pushState({tab: tabName}, '', newUrl);
             
             // Se for a aba dashboard, garantir que os dados estejam carregados
