@@ -1981,6 +1981,7 @@
                                 <th>Cliente</th>
                                 <th>Nota Fiscal</th>
                                 <th>Carregamento</th>
+                                <th>Data do Pedido</th>
                                 <th>Previsão Entrega</th>
                                 <th>Horário</th>
                                 <th>Observação</th>
@@ -2001,6 +2002,7 @@
                                 <td>{{ agendamento.CLIENTE | none_to_dash }}</td>
                                 <td>{{ agendamento.NUMNOTA | none_to_dash }}</td>
                                 <td>{{ agendamento.NUMCAR | none_to_dash }}</td>
+                                <td>{{ agendamento.DATA_PEDIDO.strftime('%d/%m/%Y') if agendamento.DATA_PEDIDO else '-' }}</td>
                                 <td><strong>{{ agendamento.PREVENTREGA.strftime('%d/%m/%Y') if agendamento.PREVENTREGA else '-' }}</strong></td>
                                 <td>
                                     <div class="horario-container">
@@ -2055,7 +2057,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="{% if is_admin %}11{% else %}9{% endif %}" style="text-align: center; padding: 20px; color: var(--dark-gray);">
+                                <td colspan="{% if is_admin %}12{% else %}10{% endif %}" style="text-align: center; padding: 20px; color: var(--dark-gray);">
                                     <i class="bi bi-inbox" style="font-size: 1.5rem; margin-bottom: 6px; display: block;"></i>
                                     Nenhum agendamento encontrado.
                                 </td>

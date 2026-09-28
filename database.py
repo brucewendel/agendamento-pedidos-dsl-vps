@@ -583,7 +583,7 @@ def get_agendamentos_confirmados(codigo_rca=None, numped_filtro=None, data_de=No
                 GROUP BY e.carga_formada_erp, e.seq_pedido_erp
             )
             SELECT
-                p.NUMPEDRCA, a.NUMPED, c.CLIENTE, p.DATA, p.NUMNOTA, p.NUMCAR,
+                p.NUMPEDRCA, a.NUMPED, c.CLIENTE, p.DATA AS DATA_PEDIDO, p.NUMNOTA, p.NUMCAR,
                 a.PREVENTREGA, a.OBSERVACAO,
                 TO_CHAR(a.HORAINI, 'HH24:MI') || 'h' AS HORAINI,
                 TO_CHAR(a.HORAFIM, 'HH24:MI') || 'h' AS HORAFIM,
