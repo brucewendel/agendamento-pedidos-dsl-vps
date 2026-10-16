@@ -304,7 +304,12 @@ def format_phone_number(phone):
     elif len(clean_phone) < 10:
         # Número muito curto - retorna como está para validação falhar
         pass
-    
+
+    # Envio sem o 9 adicional: 55 + DDD + 9XXXXXXXX -> 55 + DDD + XXXXXXXX
+    # (a API de WhatsApp aceita mas não entrega quando o número vai com o nono dígito)
+    if len(clean_phone) == 13 and clean_phone.startswith('55') and clean_phone[4] == '9':
+        clean_phone = clean_phone[:4] + clean_phone[5:]
+
     print(f"[DEBUG format_phone_number] Entrada: '{phone}' -> Saída: '{clean_phone}'")
     return clean_phone
 
