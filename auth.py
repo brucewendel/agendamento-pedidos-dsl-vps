@@ -421,6 +421,14 @@ def _reservar_envio_reset(codusur):
     except Exception:
         return True
 
+def _liberar_envio_reset(codusur):
+    if not redis_client:
+        return
+    try:
+        redis_client.delete(f"rca_reset_cd:{int(codusur)}")
+    except Exception:
+        pass
+
 def solicitar_reset_senha(codusur):
     """Gera o link de definir/redefinir senha e envia por WhatsApp (texto simples).
 
@@ -450,7 +458,18 @@ def solicitar_reset_senha(codusur):
         f"Acesse o link (válido por {RESET_TTL_SEG // 60} minutos):\n{link}",
         "Se não foi você, ignore esta mensagem.",
     ])
-    resultados = send_message(mensagem, numero_destino=format_phone_number(telefone))
-    if resultados and resultados[0][1]:
+    # API_URL aponta para o endpoint CTA (exige "text" + botoes), entao o envio vai por send_cta_message
+    _, enviado, _ = send_cta_message(
+        number=format_phone_number(telefone),
+        header="🔐 Definir senha - DSL",
+        text=mensagem,
+        footer="Não compartilhe este link com ninguém.",
+        button_value=link,
+        button_label="Copiar link",
+        button_type="copy",
+        create_ticket=False
+    )
+    if enviado:
         return True, 'enviado'
+    _liberar_envio_reset(codusur)  # falhou: nao gastar o intervalo de 1 minuto
     return False, 'falha_envio'

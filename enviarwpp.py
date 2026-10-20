@@ -136,7 +136,8 @@ def send_cta_message(number, header, text, footer, button_value, button_label="C
     # Log do payload sendo enviado
     print(f"\n[ENVIARWPP] 📤 Enviando mensagem CTA WhatsApp")
     print(f"[ENVIARWPP] URL: {URL_CTA}")
-    print(f"[ENVIARWPP] Payload: {json.dumps(payload, ensure_ascii=False, indent=2)}")
+    # Nao logar o payload: o texto/botao carregam token ou link de senha
+    print(f"[ENVIARWPP] Destino: {number} (CTA, texto com {len(text)} caracteres)")
     
     try:
         response = requests.post(URL_CTA, headers=headers_cta, json=payload, timeout=10)
