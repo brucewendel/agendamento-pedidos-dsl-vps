@@ -52,7 +52,7 @@
                     <i class="bi bi-phone text-4xl text-white"></i>
                 </div>
                 <h1 class="text-3xl font-bold text-white mb-2">Login RCA</h1>
-                <p class="text-purple-100">Autenticação via WhatsApp</p>
+                <p class="text-purple-100">Acesse com seu código e senha</p>
             </div>
             
             <!-- Form Content -->
@@ -80,22 +80,23 @@
                 </div>
                 {% endif %}
                 
-                <!-- Step 1: Request Token -->
-                <div x-show="!showTokenInput" x-transition>
-                    <form method="POST" @submit.prevent="requestToken" class="space-y-6">
-                        
+                <!-- Login: código + senha -->
+                <div>
+                    <form method="POST" @submit.prevent="login" class="space-y-6">
+
                         <!-- Código RCA Field -->
                         <div>
                             <label for="codigo_rca" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                                 <i class="bi bi-person-badge-fill mr-1"></i> Código RCA
                             </label>
                             <div class="relative">
-                                <input 
-                                    type="number" 
-                                    id="codigo_rca" 
-                                    name="codigo_rca" 
+                                <input
+                                    type="number"
+                                    id="codigo_rca"
+                                    name="codigo_rca"
                                     x-model="codigoRca"
                                     required
+                                    autocomplete="username"
                                     class="w-full px-4 py-3 pl-12 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 outline-none transition-all duration-200 text-slate-900 dark:text-slate-100"
                                     placeholder="Digite seu código RCA"
                                     :class="{ 'border-red-500': errors.codigoRca }"
@@ -104,92 +105,60 @@
                             </div>
                             <p x-show="errors.codigoRca" x-text="errors.codigoRca" class="mt-1 text-sm text-red-500"></p>
                         </div>
-                        
+
+                        <!-- Senha Field -->
+                        <div>
+                            <label for="senha" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                                <i class="bi bi-lock-fill mr-1"></i> Senha
+                            </label>
+                            <div class="relative">
+                                <input
+                                    :type="mostrarSenha ? 'text' : 'password'"
+                                    id="senha"
+                                    name="senha"
+                                    x-model="senha"
+                                    required
+                                    autocomplete="current-password"
+                                    class="w-full px-4 py-3 pl-12 pr-12 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 outline-none transition-all duration-200 text-slate-900 dark:text-slate-100"
+                                    placeholder="Digite sua senha"
+                                    :class="{ 'border-red-500': errors.senha }"
+                                >
+                                <i class="bi bi-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <button type="button" @click="mostrarSenha = !mostrarSenha" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" title="Mostrar/ocultar senha">
+                                    <i :class="mostrarSenha ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                                </button>
+                            </div>
+                            <p x-show="errors.senha" x-text="errors.senha" class="mt-1 text-sm text-red-500"></p>
+                        </div>
+
                         <!-- Submit Button -->
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             :disabled="loading"
                             class="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             <span x-show="!loading">
-                                <i class="bi bi-whatsapp"></i> Enviar Token via WhatsApp
+                                <i class="bi bi-box-arrow-in-right"></i> Entrar
                             </span>
                             <span x-show="loading" class="flex items-center gap-2">
                                 <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                Enviando...
+                                Aguarde...
                             </span>
+                        </button>
+
+                        <!-- Primeiro acesso / esqueci a senha -->
+                        <button
+                            type="button"
+                            @click="enviarLink()"
+                            :disabled="loading"
+                            class="w-full text-sm font-semibold text-purple-600 dark:text-purple-300 hover:underline disabled:opacity-50"
+                        >
+                            <i class="bi bi-whatsapp"></i> Primeiro acesso / Esqueci minha senha
                         </button>
                     </form>
                 </div>
                 
-                <!-- Step 2: Validate Token -->
-                <div x-show="showTokenInput" x-transition class="space-y-6">
-                    
-                    <!-- Info do RCA -->
-                    <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
-                        <p class="text-sm text-purple-600 dark:text-purple-300 mb-1">
-                            <i class="bi bi-info-circle-fill mr-1"></i> Token enviado para:
-                        </p>
-                        <p class="font-semibold text-purple-800 dark:text-purple-200" x-text="nomeRca || '{{ nome }}'"></p>
-                        <p class="text-xs text-purple-500 dark:text-purple-400 mt-2">
-                            Verifique seu WhatsApp e digite o código de 6 dígitos
-                        </p>
-                    </div>
-                    
-                    <form method="POST" @submit.prevent="validateToken" class="space-y-6">
-                        <input type="hidden" name="codigo_rca" x-model="codigoRca" value="{{ codigo_rca }}">
-                        
-                        <!-- Token Field -->
-                        <div>
-                            <label for="token" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                                <i class="bi bi-shield-lock-fill mr-1"></i> Código de Verificação
-                            </label>
-                            <div class="relative">
-                                <input 
-                                    type="text" 
-                                    id="token" 
-                                    name="token" 
-                                    x-model="token"
-                                    required
-                                    maxlength="6"
-                                    pattern="[0-9]{6}"
-                                    class="w-full px-4 py-3 pl-12 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 outline-none transition-all duration-200 text-slate-900 dark:text-slate-100 text-center text-2xl tracking-widest font-mono"
-                                    placeholder="000000"
-                                    :class="{ 'border-red-500': errors.token }"
-                                    @input="token = token.replace(/[^0-9]/g, '')"
-                                >
-                                <i class="bi bi-shield-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            </div>
-                            <p x-show="errors.token" x-text="errors.token" class="mt-1 text-sm text-red-500"></p>
-                        </div>
-                        
-                        <!-- Buttons -->
-                        <div class="space-y-3">
-                            <button 
-                                type="submit" 
-                                :disabled="loading"
-                                class="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                <span x-show="!loading">
-                                    <i class="bi bi-check-circle"></i> Validar Token
-                                </span>
-                                <span x-show="loading" class="flex items-center gap-2">
-                                    <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Validando...
-                                </span>
-                            </button>
-                            
-                            <button 
-                                type="button"
-                                @click="resetForm"
-                                class="w-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold py-3 px-6 rounded-xl transition-all duration-200"
-                            >
-                                <i class="bi bi-arrow-left"></i> Voltar
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                
+
                 <!-- Divider -->
                 <div class="relative my-8">
                     <div class="absolute inset-0 flex items-center">
@@ -235,122 +204,77 @@
 function loginRcaForm() {
     return {
         codigoRca: '{{ codigo_rca }}' || '',
-        token: '',
-        nomeRca: '{{ nome }}' || '',
-        showTokenInput: {{ 'true' if show_token else 'false' }},
+        senha: '',
+        mostrarSenha: false,
         loading: false,
         errors: {},
         showInstallButton: false,
         deferredPrompt: null,
         
-        async requestToken() {
+        avisoLoginPorSenha() {
+            // Aviso único por navegador. O storage pode estar bloqueado: nesse caso mostra sempre.
+            const chave = 'aviso_login_senha_v1';
+            try {
+                if (localStorage.getItem(chave)) return;
+            } catch (e) {}
+
+            // Não sobrepor o aviso quando a página já abre com mensagem (ex.: senha acabou de ser criada)
+            if (document.querySelector('.animate-fade-in .bi-check-circle-fill, .animate-fade-in .bi-exclamation-circle-fill')) return;
+
+            setTimeout(() => {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Agora o login é por senha',
+                    html: 'O acesso do RCA passou a ser com <b>código e senha</b>, e não mais com o token do WhatsApp.' +
+                          '<br><br>Ainda não tem senha? Digite seu código e clique em ' +
+                          '<b>"Primeiro acesso / Esqueci minha senha"</b>: enviaremos um link para o seu WhatsApp para você criar a sua.',
+                    confirmButtonText: 'Entendi',
+                    confirmButtonColor: '#9333ea'
+                }).then(() => {
+                    try { localStorage.setItem(chave, '1'); } catch (e) {}
+                });
+            }, 400);
+        },
+
+        async post(url, campos) {
+            const formData = new FormData();
+            Object.entries(campos).forEach(([k, v]) => formData.append(k, v));
+            formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' },
+                body: formData
+            });
+            // 429 do rate limit vem em HTML; não quebrar por isso
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 429 && !data.message) {
+                data.message = 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+            }
+            return { response, data };
+        },
+
+        async login() {
             this.errors = {};
-            
-            if (!this.codigoRca || this.codigoRca.trim() === '') {
+
+            if (!this.codigoRca || String(this.codigoRca).trim() === '') {
                 this.errors.codigoRca = 'Código RCA é obrigatório';
                 return;
             }
-            
-            this.loading = true;
-            
-            try {
-                const formData = new FormData();
-                formData.append('codigo_rca', this.codigoRca.trim());
-                
-                // Adicionar token CSRF
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                formData.append('csrf_token', csrfToken);
-                
-                const response = await fetch('/login-rca', {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json'
-                    },
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    // Token enviado com sucesso
-                    this.showTokenInput = true;
-                    this.nomeRca = data.nome || '';
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Token Enviado!',
-                        text: 'Verifique seu WhatsApp e digite o código recebido.',
-                        confirmButtonColor: '#9333ea',
-                        timer: 3000
-                    });
-                    
-                    // Focar no campo de token após 100ms
-                    setTimeout(() => {
-                        document.getElementById('token')?.focus();
-                    }, 100);
-                } else {
-                    // Erro ao enviar token
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: data.message || 'Erro ao solicitar token',
-                        confirmButtonColor: '#ef4444'
-                    });
-                }
-            } catch (error) {
-                console.error('Erro ao solicitar token:', error);
-                
-                if (!navigator.onLine) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Você está offline',
-                        text: 'Não é possível solicitar token sem conexão com a internet.',
-                        confirmButtonColor: '#f59e0b'
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Ocorreu um erro ao solicitar o token. Tente novamente.',
-                        confirmButtonColor: '#ef4444'
-                    });
-                }
-            } finally {
-                this.loading = false;
-            }
-        },
-        
-        async validateToken() {
-            this.errors = {};
-            
-            if (!this.token || this.token.length !== 6) {
-                this.errors.token = 'Digite o código de 6 dígitos';
+            if (!this.senha) {
+                this.errors.senha = 'Informe a senha';
                 return;
             }
-            
+
             this.loading = true;
-            
+
             try {
-                const formData = new FormData();
-                formData.append('codigo_rca', this.codigoRca);
-                formData.append('token', this.token);
-                
-                // Adicionar token CSRF
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                formData.append('csrf_token', csrfToken);
-                
-                const response = await fetch('/login-rca', {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json'
-                    },
-                    body: formData
+                const { response, data } = await this.post('/login-rca', {
+                    codigo_rca: String(this.codigoRca).trim(),
+                    senha: this.senha
                 });
-                
-                const data = await response.json();
-                
+
                 if (response.ok && data.success) {
-                    // Login bem-sucedido - redirecionar para o painel
                     Swal.fire({
                         icon: 'success',
                         title: 'Login Realizado!',
@@ -359,40 +283,79 @@ function loginRcaForm() {
                         timer: 1500,
                         showConfirmButton: false
                     });
-                    
                     setTimeout(() => {
                         window.location.href = data.redirect || '/painel';
                     }, 1500);
+                } else if (data.primeiro_acesso) {
+                    // Ainda não tem senha: manda o link de cadastro por WhatsApp
+                    this.senha = '';
+                    this.loading = false;
+                    await this.enviarLink(true);
                 } else {
-                    // Token inválido ou erro
+                    this.senha = '';
                     Swal.fire({
                         icon: 'error',
-                        title: 'Token Inválido',
-                        text: data.message || 'O token digitado está incorreto ou expirou. Tente novamente.',
+                        title: 'Não foi possível entrar',
+                        text: data.message || 'Código ou senha inválidos.',
                         confirmButtonColor: '#ef4444'
                     });
-                    this.token = '';
-                    
-                    // Focar novamente no campo de token
-                    setTimeout(() => {
-                        document.getElementById('token')?.focus();
-                    }, 100);
+                    setTimeout(() => document.getElementById('senha')?.focus(), 100);
                 }
             } catch (error) {
-                console.error('Erro ao validar token:', error);
-                
+                console.error('Erro no login:', error);
+                Swal.fire({
+                    icon: navigator.onLine ? 'error' : 'warning',
+                    title: navigator.onLine ? 'Erro' : 'Você está offline',
+                    text: navigator.onLine ? 'Ocorreu um erro ao entrar. Tente novamente.'
+                                           : 'Não é possível entrar sem conexão com a internet.',
+                    confirmButtonColor: '#ef4444'
+                });
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async enviarLink(primeiroAcesso = false) {
+            this.errors = {};
+
+            if (!this.codigoRca || String(this.codigoRca).trim() === '') {
+                this.errors.codigoRca = 'Informe o código RCA para receber o link';
+                document.getElementById('codigo_rca')?.focus();
+                return;
+            }
+
+            this.loading = true;
+
+            try {
+                const { response, data } = await this.post('/login-rca/esqueci-senha', {
+                    codigo_rca: String(this.codigoRca).trim()
+                });
+
+                const enviado = response.ok && data.success;
+                Swal.fire({
+                    icon: enviado ? 'info' : 'error',
+                    title: !enviado ? 'Erro' : (primeiroAcesso ? 'Você ainda não tem senha' : 'Verifique seu WhatsApp'),
+                    text: !enviado
+                        ? (data.message || 'Não foi possível enviar o link. Tente novamente.')
+                        : (primeiroAcesso
+                            ? 'O login agora é feito com código e senha. Enviamos um link para o seu WhatsApp para você criar a sua. O link vale por 30 minutos.'
+                            : data.message),
+                    confirmButtonColor: '#9333ea'
+                });
+            } catch (error) {
+                console.error('Erro ao enviar link:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro',
-                    text: 'Ocorreu um erro ao validar o token. Tente novamente.',
+                    text: 'Ocorreu um erro ao enviar o link. Tente novamente.',
                     confirmButtonColor: '#ef4444'
                 });
-                this.token = '';
             } finally {
                 this.loading = false;
             }
         },
         
+
         async installPWA() {
             const isPWAInstalled = window.matchMedia('(display-mode: standalone)').matches || 
                                    window.navigator.standalone === true;
@@ -487,20 +450,9 @@ function loginRcaForm() {
             }
         },
         
-        resetForm() {
-            this.showTokenInput = false;
-            this.token = '';
-            this.nomeRca = '';
-            this.errors = {};
-        },
-        
         init() {
-            if (this.showTokenInput && this.codigoRca) {
-                setTimeout(() => {
-                    document.getElementById('token')?.focus();
-                }, 100);
-            }
-            
+            this.avisoLoginPorSenha();
+
             // Capturar evento de instalação PWA
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();

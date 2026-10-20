@@ -59,6 +59,8 @@ app.register_blueprint(main_routes)
 from rate_limit_config import RATE_LIMITS
 limiter.limit(RATE_LIMITS['login'])(app.view_functions['main.login_modern'])
 limiter.limit(RATE_LIMITS['login_rca'])(app.view_functions['main.login_rca'])
+limiter.limit(RATE_LIMITS['esqueci_senha'])(app.view_functions['main.esqueci_senha_rca'])
+limiter.limit(RATE_LIMITS['redefinir_senha'])(app.view_functions['main.redefinir_senha_rca'])
 limiter.limit(RATE_LIMITS['api_kpis'])(app.view_functions['main.api_kpis'])
 limiter.limit(RATE_LIMITS['api_graficos'])(app.view_functions['main.api_graficos'])
 limiter.limit(RATE_LIMITS['agendamento'])(app.view_functions['main.atualizar'])

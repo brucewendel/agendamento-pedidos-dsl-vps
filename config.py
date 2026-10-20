@@ -78,6 +78,8 @@ FLASK_DEBUG = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 API_URL = os.getenv("API_URL")
 API_TOKEN = os.getenv("API_TOKEN")
 NUMERO_ADMIN = os.getenv("NUMERO_ADMIN")
+# URL pública fixa usada nos links enviados por WhatsApp (nunca derivar do Host da requisição)
+APP_BASE_URL = os.getenv("APP_BASE_URL", "https://agendamentodsl.mx2tech.net").rstrip("/")
 
 # --- Configurações do Redis para Cache ---
 REDIS_HOST = os.getenv("REDIS_HOST", "redis") # 'redis' é o nome do serviço no docker-compose

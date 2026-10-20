@@ -6,7 +6,9 @@ Configuração de Rate Limiting para rotas específicas
 RATE_LIMITS = {
     # Rotas de autenticação - proteção contra brute force
     'login': "5 per 15 minutes",  # Máximo 5 tentativas de login em 15 minutos
-    'login_rca': "3 per 10 minutes",  # Máximo 3 tentativas de login RCA em 10 minutos
+    'login_rca': "10 per 10 minutes",  # Login RCA por senha; o bloqueio por conta (5 falhas) fica no banco
+    'esqueci_senha': "5 per 15 minutes",  # Pedidos de link de senha por WhatsApp (por IP; há também intervalo por RCA)
+    'redefinir_senha': "20 per 15 minutes",  # Abertura/envio do formulário de nova senha
     
     # APIs de leitura
     'api_read': "60 per minute",  # 60 requisições por minuto para APIs de leitura

@@ -1,17 +1,18 @@
 import json
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, make_response
 from auth import (
     login_required, permission_required, authenticate_user, authenticate_user_extended, get_user_info,
-    create_whatsapp_token, validate_whatsapp_token, send_whatsapp_token,
-    log_rca_auth_attempt, format_phone_number, validate_phone_number,
-    cleanup_expired_tokens
+    log_rca_auth_attempt, validate_phone_number, cleanup_expired_tokens,
+    verificar_senha, hash_senha, validar_senha_nova, solicitar_reset_senha,
+    consultar_token_reset, invalidar_token_reset, MAX_TENTATIVAS_LOGIN, BLOQUEIO_MINUTOS
 )
 from database import (
     get_pedidos_pendentes, get_usuarios, get_usuario_by_id,
     get_agendamentos_confirmados, atualizar_agendamento,
     atualizar_telefone_usuario, get_stats_data,
-    get_connection, release_connection, get_app_user_name
+    get_connection, release_connection, get_app_user_name,
+    get_rca_auth, definir_senha_rca, registrar_falha_login_rca, registrar_login_ok_rca
 )
 from charts import generate_all_charts
 from rate_limit_config import RATE_LIMITS
@@ -214,173 +215,140 @@ def service_worker():
     response.headers['Cache-Control'] = 'no-cache'
     return response
 
+def _is_ajax():
+    return request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+           'application/json' in request.headers.get('Accept', '')
+
+def _login_rca_resposta(ok, message, status=200, **extra):
+    """Responde JSON (fetch do front) ou a página de login (form tradicional)."""
+    if _is_ajax():
+        return jsonify({'success': ok, 'message': message, **extra}), status
+    return render_template('login_rca_modern.html', **{('success' if ok else 'error'): message}), status
+
+def _dados_requisicao():
+    if request.is_json:
+        return request.get_json(silent=True) or {}
+    return request.form.to_dict()
+
+def _no_store(response):
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    return response
+
 @main_routes.route('/login-rca', methods=['GET', 'POST'])
 def login_rca():
-    """Login para RCAs via WhatsApp"""
+    """Login do RCA com código + senha. O WhatsApp só entra no 'esqueci a senha'."""
     if request.method == 'POST':
-        # Detectar se é requisição AJAX (fetch do JavaScript)
-        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-                  'application/json' in request.headers.get('Accept', '')
-        
-        # Verifica se os dados vêm como JSON ou FormData
-        if request.is_json:
-            data = request.get_json()
-            step = data.get('step')
-        else:
-            # Dados vêm do formulário HTML
-            data = request.form.to_dict()
-            # Determina o step baseado nos campos presentes
-            if 'token' in data:
-                step = 'validate_token'
-            else:
-                step = 'request_token'
-        
-        if step == 'request_token':
-            codusur = data.get('codusur') or data.get('codigo_rca')  # Suporte para ambos os nomes
-            
-            try:
-                codusur = int(codusur)
-            except (ValueError, TypeError):
-                # Para formulário HTML, retorna página com erro
-                if not request.is_json:
-                    return render_template('login_rca_modern.html', 
-                                         error='Código de usuário inválido')
-                return jsonify({
-                    'success': False,
-                    'message': 'Código de usuário inválido'
-                }), 400
-            
-            # Busca o usuário no banco
-            usuario = get_usuario_by_id(codusur)
-            if not usuario:
-                log_rca_auth_attempt(codusur, 'Desconhecido', 'N/A', False, 'Usuário não encontrado')
-                # Para requisição AJAX, retorna JSON
-                if is_ajax:
-                    return jsonify({
-                        'success': False,
-                        'message': 'Usuário não encontrado'
-                    }), 404
-                # Para formulário HTML tradicional, retorna página com erro
-                return render_template('login_rca_modern.html', 
-                                     error='Usuário não encontrado')
-            
-            telefone = usuario.get('TELEFONE1')
-            nome = usuario.get('NOME')
-            
-            if not telefone or not validate_phone_number(telefone):
-                log_rca_auth_attempt(codusur, nome, telefone or 'N/A', False, 'Telefone inválido')
-                # Para requisição AJAX, retorna JSON
-                if is_ajax:
-                    return jsonify({
-                        'success': False,
-                        'message': 'Telefone não cadastrado ou inválido'
-                    }), 400
-                # Para formulário HTML tradicional, retorna página com erro
-                return render_template('login_rca_modern.html', 
-                                     error='Telefone não cadastrado ou inválido')
-            
-            # Gera e envia token
-            token = create_whatsapp_token(codusur, telefone, nome)
-            telefone_formatado = format_phone_number(telefone)
-            
-            print(f"Tentando enviar token {token} para {telefone_formatado} ({nome})")
-            
-            if send_whatsapp_token(telefone_formatado, token, nome):
-                print(f"Token enviado com sucesso para {telefone_formatado}")
-                # Para requisição AJAX, retorna JSON
-                if is_ajax:
-                    return jsonify({
-                        'success': True,
-                        'message': f'Token enviado via WhatsApp para {nome}',
-                        'nome': nome,
-                        'show_token': True
-                    })
-                # Para formulário HTML tradicional, mostra tela de token
-                return render_template('login_rca_modern.html', 
-                                     show_token=True, 
-                                     codigo_rca=codusur,
-                                     nome=nome,
-                                     success=f'Token enviado via WhatsApp para {nome}')
-            else:
-                print(f"Falha ao enviar token para {telefone_formatado}")
-                log_rca_auth_attempt(codusur, nome, telefone, False, 'Falha no envio do WhatsApp')
-                # Para requisição AJAX, retorna JSON
-                if is_ajax:
-                    return jsonify({
-                        'success': False,
-                        'message': 'Erro ao enviar token via WhatsApp'
-                    }), 500
-                # Para formulário HTML tradicional, retorna página com erro
-                return render_template('login_rca_modern.html', 
-                                     error='Erro ao enviar token via WhatsApp')
-        
-        elif step == 'validate_token':
-            codusur = data.get('codusur') or data.get('codigo_rca')  # Suporte para ambos os nomes
-            token = data.get('token')
-            
-            print(f"[DEBUG] Validando token - codusur recebido: {codusur}, token recebido: '{token}'")
-            
-            try:
-                codusur = int(codusur)
-            except (ValueError, TypeError):
-                print(f"[DEBUG] Erro ao converter codusur para int: {codusur}")
-                # Para formulário HTML, retorna página com erro
-                if not request.is_json:
-                    return render_template('login_rca_modern.html', 
-                                         show_token=True, 
-                                         codigo_rca=data.get('codigo_rca', ''),
-                                         error='Código de usuário inválido')
-                return jsonify({
-                    'success': False,
-                    'message': 'Código de usuário inválido'
-                }), 400
-            
-            print(f"[DEBUG] Chamando validate_whatsapp_token com codusur={codusur}, token='{token}'")
-            is_valid, user_data = validate_whatsapp_token(codusur, token)
-            print(f"[DEBUG] Resultado da validação: is_valid={is_valid}, user_data={user_data}")
-            
-            if is_valid and user_data:
-                # Login bem-sucedido
-                session['rca_codusur'] = codusur
-                session['rca_nome'] = user_data['nome']
-                session['rca_telefone'] = user_data['telefone']
-                
-                log_rca_auth_attempt(codusur, user_data['nome'], user_data['telefone'], True, 'Login bem-sucedido')
-                
-                # Para requisição AJAX, retorna JSON com URL de redirecionamento
-                if is_ajax:
-                    return jsonify({
-                        'success': True,
-                        'message': 'Login realizado com sucesso!',
-                        'redirect': url_for('main.painel')
-                    })
-                
-                # Para formulário HTML tradicional, redireciona diretamente
-                return redirect(url_for('main.painel'))
-            else:
-                # Busca dados do usuário para log
-                usuario = get_usuario_by_id(codusur)
-                nome = usuario.get('NOME', 'Desconhecido') if usuario else 'Desconhecido'
-                telefone = usuario.get('TELEFONE1', 'N/A') if usuario else 'N/A'
-                
-                log_rca_auth_attempt(codusur, nome, telefone, False, 'Token inválido ou expirado')
-                
-                # Para requisição AJAX, retorna JSON
-                if is_ajax:
-                    return jsonify({
-                        'success': False,
-                        'message': 'Token inválido ou expirado'
-                    }), 401
-                
-                # Para formulário HTML tradicional, retorna página com erro
-                return render_template('login_rca_modern.html', 
-                                     show_token=True, 
-                                     codigo_rca=data.get('codigo_rca', ''),
-                                     error='Token inválido ou expirado')
-    
-    # Limpa tokens expirados
+        data = _dados_requisicao()
+        senha = data.get('senha') or ''
+
+        try:
+            codusur = int(data.get('codusur') or data.get('codigo_rca'))
+        except (ValueError, TypeError):
+            return _login_rca_resposta(False, 'Código de usuário inválido', 400)
+
+        if not senha:
+            return _login_rca_resposta(False, 'Informe a senha', 400)
+
+        msg_invalido = 'Código ou senha inválidos'
+
+        usuario = get_usuario_by_id(codusur)
+        if not usuario:
+            log_rca_auth_attempt(codusur, 'Desconhecido', 'N/A', False, 'Usuário não encontrado')
+            return _login_rca_resposta(False, msg_invalido, 401)
+
+        nome = usuario.get('NOME')
+        telefone = usuario.get('TELEFONE1') or 'N/A'
+        cred = get_rca_auth(codusur)
+
+        # Primeiro acesso: ainda não existe senha. O front pede o link por WhatsApp.
+        if not cred or not cred['senha_hash']:
+            log_rca_auth_attempt(codusur, nome, telefone, False, 'Primeiro acesso: sem senha definida')
+            return _login_rca_resposta(
+                False, 'Você ainda não definiu sua senha. Enviaremos um link para o seu WhatsApp.',
+                403, primeiro_acesso=True)
+
+        if cred['min_bloqueio'] > 0:
+            log_rca_auth_attempt(codusur, nome, telefone, False, 'Conta bloqueada por tentativas')
+            return _login_rca_resposta(
+                False, f"Muitas tentativas incorretas. Tente novamente em {cred['min_bloqueio']} min "
+                       f"ou use 'Esqueci minha senha'.", 429)
+
+        if not verificar_senha(cred['senha_hash'], senha):
+            registrar_falha_login_rca(codusur, MAX_TENTATIVAS_LOGIN, BLOQUEIO_MINUTOS)
+            log_rca_auth_attempt(codusur, nome, telefone, False, 'Senha incorreta')
+            return _login_rca_resposta(False, msg_invalido, 401)
+
+        registrar_login_ok_rca(codusur)
+        session['rca_codusur'] = codusur
+        session['rca_nome'] = nome
+        session['rca_telefone'] = telefone
+        log_rca_auth_attempt(codusur, nome, telefone, True, 'Login bem-sucedido')
+
+        if _is_ajax():
+            return jsonify({
+                'success': True,
+                'message': 'Login realizado com sucesso!',
+                'redirect': url_for('main.painel')
+            })
+        return redirect(url_for('main.painel'))
+
+    # Limpa tokens expirados (legado em memória)
     cleanup_expired_tokens()
     return render_template('login_rca_modern.html')
+
+@main_routes.route('/login-rca/esqueci-senha', methods=['POST'])
+def esqueci_senha_rca():
+    """Envia por WhatsApp o link para definir/redefinir a senha (também serve ao primeiro acesso)."""
+    data = _dados_requisicao()
+    try:
+        codusur = int(data.get('codusur') or data.get('codigo_rca'))
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'message': 'Código de usuário inválido'}), 400
+
+    ok, motivo = solicitar_reset_senha(codusur)
+    print(f"[RESET SENHA] codusur={codusur} ok={ok} motivo={motivo}")
+
+    # Resposta sempre igual: não revela se o código existe, se tem telefone ou se caiu no intervalo mínimo
+    return jsonify({
+        'success': True,
+        'message': 'Se o código estiver cadastrado com um telefone válido, enviamos o link para o seu '
+                   'WhatsApp. O link vale por 30 minutos.'
+    })
+
+@main_routes.route('/redefinir-senha/<token>', methods=['GET', 'POST'])
+def redefinir_senha_rca(token):
+    """Página aberta pelo link do WhatsApp para definir a senha."""
+    codusur = consultar_token_reset(token)
+    if not codusur:
+        return _no_store(make_response(render_template('redefinir_senha_rca.html', invalido=True), 400))
+
+    usuario = get_usuario_by_id(codusur)
+    nome = usuario.get('NOME') if usuario else ''
+
+    if request.method == 'POST':
+        senha = request.form.get('senha') or ''
+        confirmar = request.form.get('confirmar') or ''
+
+        erro = validar_senha_nova(senha)
+        if not erro and senha != confirmar:
+            erro = 'As senhas não conferem.'
+        if erro:
+            return _no_store(make_response(
+                render_template('redefinir_senha_rca.html', nome=nome, error=erro), 400))
+
+        if not definir_senha_rca(codusur, hash_senha(senha)):
+            return _no_store(make_response(
+                render_template('redefinir_senha_rca.html', nome=nome,
+                                error='Não foi possível salvar a senha. Tente novamente.'), 500))
+
+        invalidar_token_reset(token)
+        log_rca_auth_attempt(codusur, nome, (usuario or {}).get('TELEFONE1') or 'N/A', False, 'Senha definida/redefinida')
+        return _no_store(make_response(render_template(
+            'login_rca_modern.html', codigo_rca=codusur,
+            success='Senha definida com sucesso! Entre com seu código e a nova senha.')))
+
+    return _no_store(make_response(render_template('redefinir_senha_rca.html', nome=nome)))
 
 @main_routes.route('/painel')
 def painel():

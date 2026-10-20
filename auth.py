@@ -1,14 +1,17 @@
+import hashlib
 import json
 import random
+import secrets
 import string
 import time
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import session, request, jsonify, redirect, url_for
 import requests
+from werkzeug.security import generate_password_hash, check_password_hash
 from config import (
     USUARIOS, TOKENS_WHATSAPP, LOGS_AUTH_RCA,
-    API_URL, API_TOKEN, NUMERO_ADMIN
+    API_URL, API_TOKEN, NUMERO_ADMIN, APP_BASE_URL
 )
 from database import get_usuario_by_id, get_usuario_pcempr_by_name, authenticate_pcempr_user, redis_client
 from enviarwpp import send_message, send_cta_message
@@ -329,3 +332,125 @@ def validate_phone_number(phone):
         return False
     
     return True
+
+
+# ============================================
+# SENHA DO RCA + REDEFINICAO POR LINK NO WHATSAPP
+# ============================================
+
+SENHA_MIN_LEN = 8
+SENHA_MAX_LEN = 128
+MAX_TENTATIVAS_LOGIN = 5
+BLOQUEIO_MINUTOS = 15
+RESET_TTL_SEG = 1800        # validade do link: 30 minutos
+RESET_COOLDOWN_SEG = 60     # intervalo minimo entre links para o mesmo RCA
+
+def hash_senha(senha):
+    """Gera o hash (com salt) da senha; nunca guardamos a senha pura."""
+    return generate_password_hash(senha, method='pbkdf2:sha256:600000')
+
+def verificar_senha(senha_hash, senha):
+    """Confere a senha digitada contra o hash salvo."""
+    if not senha_hash or not senha:
+        return False
+    try:
+        return check_password_hash(senha_hash, senha)
+    except Exception:
+        return False
+
+def validar_senha_nova(senha):
+    """Retorna a mensagem de erro da regra de senha, ou None se estiver ok."""
+    if not senha or len(senha) < SENHA_MIN_LEN:
+        return f'A senha deve ter pelo menos {SENHA_MIN_LEN} caracteres.'
+    if len(senha) > SENHA_MAX_LEN:
+        return f'A senha deve ter no máximo {SENHA_MAX_LEN} caracteres.'
+    if senha.isdigit():
+        return 'A senha não pode ter apenas números.'
+    return None
+
+def _reset_key(token):
+    # No Redis fica so o hash do token: quem ler o Redis nao consegue montar o link
+    return "rca_reset:" + hashlib.sha256(token.encode()).hexdigest()
+
+def criar_token_reset(codusur):
+    """Cria um token de uso unico para definir/redefinir a senha. Invalida o anterior."""
+    if not redis_client:
+        return None
+    try:
+        token = secrets.token_urlsafe(32)
+        key = _reset_key(token)
+        pointer = f"rca_reset_user:{int(codusur)}"
+        anterior = redis_client.get(pointer)
+        pipe = redis_client.pipeline()
+        if anterior:
+            pipe.delete(anterior)
+        pipe.setex(key, RESET_TTL_SEG, str(int(codusur)))
+        pipe.setex(pointer, RESET_TTL_SEG, key)
+        pipe.execute()
+        return token
+    except Exception as e:
+        print(f"[ERRO criar_token_reset] {e}")
+        return None
+
+def consultar_token_reset(token):
+    """Retorna o codusur dono do token (sem consumir) ou None se invalido/expirado."""
+    if not redis_client or not token:
+        return None
+    try:
+        valor = redis_client.get(_reset_key(token))
+        return int(valor) if valor else None
+    except Exception as e:
+        print(f"[ERRO consultar_token_reset] {e}")
+        return None
+
+def invalidar_token_reset(token):
+    """Apaga o token (uso unico) depois de a senha ser gravada."""
+    if not redis_client or not token:
+        return
+    try:
+        redis_client.delete(_reset_key(token))
+    except Exception as e:
+        print(f"[ERRO invalidar_token_reset] {e}")
+
+def _reservar_envio_reset(codusur):
+    """True se pode enviar agora; False se ja enviou ha menos de RESET_COOLDOWN_SEG."""
+    if not redis_client:
+        return True
+    try:
+        return bool(redis_client.set(f"rca_reset_cd:{int(codusur)}", 1, nx=True, ex=RESET_COOLDOWN_SEG))
+    except Exception:
+        return True
+
+def solicitar_reset_senha(codusur):
+    """Gera o link de definir/redefinir senha e envia por WhatsApp (texto simples).
+
+    Retorna (ok, motivo). O motivo e so para log: a rota responde sempre igual
+    para nao revelar quais codigos existem.
+    """
+    usuario = get_usuario_by_id(codusur)
+    if not usuario:
+        return False, 'usuario_inexistente'
+
+    nome = usuario.get('NOME')
+    telefone = usuario.get('TELEFONE1')
+    if not telefone or not validate_phone_number(telefone):
+        return False, 'telefone_invalido'
+
+    if not _reservar_envio_reset(codusur):
+        return False, 'cooldown'
+
+    token = criar_token_reset(codusur)
+    if not token:
+        return False, 'sem_redis'
+
+    link = f"{APP_BASE_URL}/redefinir-senha/{token}"
+    mensagem = "\n\n".join([
+        f"Olá {nome}!",
+        "Recebemos um pedido para definir a senha do seu acesso ao DSL Agendamento.",
+        f"Acesse o link (válido por {RESET_TTL_SEG // 60} minutos):\n{link}",
+        "Se não foi você, ignore esta mensagem.",
+    ])
+    resultados = send_message(mensagem, numero_destino=format_phone_number(telefone))
+    if resultados and resultados[0][1]:
+        return True, 'enviado'
+    return False, 'falha_envio'

@@ -1412,3 +1412,83 @@ def authenticate_pcempr_user(nome, senha):
     except Exception as e:
         print(f"Erro na autenticação PCEMPR: {e}")
         return False
+
+
+# ============================================
+# CREDENCIAIS DE SENHA DOS RCAs (DSL.DSLTI_RCA_AUTH)
+# ============================================
+
+def get_rca_auth(codusur):
+    """Retorna as credenciais do RCA ou None (sem registro / erro de banco).
+
+    min_bloqueio > 0 indica quantos minutos faltam para o fim do bloqueio.
+    """
+    query = """
+        SELECT SENHA_HASH,
+               TENTATIVAS_FALHAS,
+               CASE WHEN BLOQUEADO_ATE > SYSDATE
+                    THEN CEIL((BLOQUEADO_ATE - SYSDATE) * 1440)
+                    ELSE 0 END
+        FROM DSL.DSLTI_RCA_AUTH
+        WHERE CODUSUR = :codusur
+    """
+    row = execute_query(query, {'codusur': codusur}, fetch_one=True)
+    if not row:
+        return None
+    return {
+        'senha_hash': row[0],
+        'tentativas': row[1] or 0,
+        'min_bloqueio': int(row[2] or 0),
+    }
+
+def definir_senha_rca(codusur, senha_hash):
+    """Grava (ou troca) o hash da senha do RCA e zera tentativas/bloqueio."""
+    query = """
+        MERGE INTO DSL.DSLTI_RCA_AUTH t
+        USING (SELECT :codusur AS CODUSUR FROM DUAL) s
+        ON (t.CODUSUR = s.CODUSUR)
+        WHEN MATCHED THEN UPDATE SET
+            t.SENHA_HASH = :senha_hash,
+            t.SENHA_ATUALIZADA_EM = SYSDATE,
+            t.TENTATIVAS_FALHAS = 0,
+            t.BLOQUEADO_ATE = NULL
+        WHEN NOT MATCHED THEN INSERT (CODUSUR, SENHA_HASH, SENHA_ATUALIZADA_EM)
+            VALUES (s.CODUSUR, :senha_hash, SYSDATE)
+    """
+    result = execute_query(query, {'codusur': codusur, 'senha_hash': senha_hash}, fetch_all=False)
+    return result is not None
+
+def registrar_falha_login_rca(codusur, max_tentativas=5, bloqueio_minutos=15):
+    """Soma uma falha de login; ao atingir o limite, bloqueia por alguns minutos.
+
+    Se um bloqueio anterior já expirou, a contagem recomeça em 1.
+    """
+    novo_total = """CASE WHEN t.BLOQUEADO_ATE IS NOT NULL AND t.BLOQUEADO_ATE <= SYSDATE
+                         THEN 1 ELSE t.TENTATIVAS_FALHAS + 1 END"""
+    query = f"""
+        MERGE INTO DSL.DSLTI_RCA_AUTH t
+        USING (SELECT :codusur AS CODUSUR FROM DUAL) s
+        ON (t.CODUSUR = s.CODUSUR)
+        WHEN MATCHED THEN UPDATE SET
+            t.TENTATIVAS_FALHAS = {novo_total},
+            t.BLOQUEADO_ATE = CASE WHEN ({novo_total}) >= :max_tentativas
+                                   THEN SYSDATE + :bloqueio_minutos / 1440
+                                   ELSE NULL END
+        WHEN NOT MATCHED THEN INSERT (CODUSUR, TENTATIVAS_FALHAS)
+            VALUES (s.CODUSUR, 1)
+    """
+    params = {
+        'codusur': codusur,
+        'max_tentativas': max_tentativas,
+        'bloqueio_minutos': bloqueio_minutos,
+    }
+    return execute_query(query, params, fetch_all=False) is not None
+
+def registrar_login_ok_rca(codusur):
+    """Zera tentativas/bloqueio e marca o último login do RCA."""
+    query = """
+        UPDATE DSL.DSLTI_RCA_AUTH
+        SET TENTATIVAS_FALHAS = 0, BLOQUEADO_ATE = NULL, ULTIMO_LOGIN_EM = SYSDATE
+        WHERE CODUSUR = :codusur
+    """
+    return execute_query(query, {'codusur': codusur}, fetch_all=False) is not None

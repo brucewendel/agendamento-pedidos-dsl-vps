@@ -57,7 +57,7 @@ def send_message(message, numbers=None, numero_destino=None,):
         # Log do payload sendo enviado
         print(f"\n[ENVIARWPP] 📤 Enviando mensagem WhatsApp")
         print(f"[ENVIARWPP] URL: {url}")
-        print(f"[ENVIARWPP] Payload: {json.dumps(payload, ensure_ascii=False, indent=2)}")
+        print(f"[ENVIARWPP] Destino: {number} (mensagem com {len(message)} caracteres)")
         
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=10)
